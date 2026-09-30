@@ -4682,12 +4682,12 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
         // ★ ย้าย backend จาก Google Apps Script มาเป็น Supabase Edge Function แล้ว
         // (ดู /supabase/functions/api/index.ts — ทำหน้าที่แทน doPost(e) เดิมทุกประการ
         // รับ { fn, args, token, requestId } แบบเดียวกัน เพื่อไม่ต้องแก้จุดเรียกใช้งานนับร้อยจุดในไฟล์นี้)
-        const GAS_URL = "https://npsxpgqvnjkjvzisljqk.supabase.co/functions/v1/api";
+        const GAS_URL = "https://qgcovpqrrnbcxddpfphh.supabase.co";
         // publishable key ของ Supabase — ใช้แนบเป็น apikey/Authorization ทุก request (จำเป็นเพราะ
         // Edge Function เปิด verify_jwt ไว้ ป้องกันคนนอกยิงเข้ามาตรงๆ โดยไม่ผ่าน Supabase gateway เลย
         // ตัวคีย์นี้เป็น "publishable" key ใช้ฝั่ง client ได้ปลอดภัย ไม่ใช่ secret — สิทธิ์จริงคุมด้วย
         // session token ของระบบเราเอง ที่ตรวจใน Edge Function อีกชั้นหนึ่งอยู่แล้ว)
-        const SUPABASE_ANON_KEY = "sb_publishable_Xc46ZOY6T11vd8W405m85w_kNRmVVIP";
+        const SUPABASE_ANON_KEY = "sb_publishable_5MB3LgdBgDCHNhO8phEOkw_zN_RHS6N";
         const isGAS = (typeof google !== 'undefined' && google.script && google.script.run && typeof window !== 'undefined' && window.location && window.location.protocol !== 'file:');
         window.isGAS = isGAS;
 
