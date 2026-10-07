@@ -4954,9 +4954,9 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
     <script>
         // ★ เพิ่ม: session token helper — เก็บ token ที่ backend ออกให้ตอน login (ไม่ใช่ role)
         // role ที่เก็บใน user_session ยังใช้ได้แค่ "ซ่อน/โชว์ UI" เท่านั้น backend ไม่เชื่อค่านี้อีกต่อไป
-        function getSessionToken() { try { return localStorage.getItem('sess_token') || ''; } catch (e) { return ''; } }
-        function setSessionToken(t) { try { if (t) localStorage.setItem('sess_token', t); } catch (e) {} }
-        function clearSessionToken() { try { localStorage.removeItem('sess_token'); } catch (e) {} }
+        function getSessionToken() { try { return localStorage.getItem('sb_sess_token') || ''; } catch (e) { return ''; } }
+        function setSessionToken(t) { try { if (t) localStorage.setItem('sb_sess_token', t); } catch (e) {} }
+        function clearSessionToken() { try { localStorage.removeItem('sb_sess_token'); } catch (e) {} }
 
         // 🚨 วาง URL ของ Web App หลังบ้าน (Google Apps Script) ที่นี่
         // ★ แก้บั๊ก: เดิมค่านี้ว่างเปล่า ทำให้ตอน deploy หน้านี้แยกบน GitHub Pages (นอก Apps Script)
@@ -5064,7 +5064,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             // ★ เพิ่ม: เจอ session หมดอายุจาก backend (sessionExpired: true) ให้เด้งกลับหน้า login
                             // ทันทีทุกจุดในระบบโดยอัตโนมัติ แทนที่จะโชว์แค่ popup error แล้วผู้ใช้งงว่าต้องทำอะไรต่อ
                             if (res.sessionExpired) {
-                                try { localStorage.removeItem('user_session'); if (typeof clearSessionToken === 'function') clearSessionToken(); } catch (e) {}
+                                try { localStorage.removeItem('sb_user_session'); if (typeof clearSessionToken === 'function') clearSessionToken(); } catch (e) {}
                                 if (typeof Swal !== 'undefined') {
                                     Swal.fire({ icon: 'info', title: 'เซสชันหมดอายุ', text: 'กรุณาเข้าสู่ระบบใหม่อีกครั้งครับ', confirmButtonText: 'ตกลง' })
                                         .then(() => location.reload());
@@ -5482,7 +5482,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             // ★ เก็บ users จริงไว้ก่อน reset allData → เพื่อไม่ให้ dropdown กลายเป็น demo
             const savedUsers = (allData.users && allData.users.length > 0) ? [...allData.users] : [];
 
-            localStorage.removeItem('user_session');
+            localStorage.removeItem('sb_user_session');
             clearSessionToken(); // ★ เพิ่ม: ล้าง session token ตอน logout ด้วย ไม่งั้น token เดิมยังใช้ยิง request ได้อยู่
             // ★ เพิ่ม: รีเซ็ต flag/สถานะที่ค้างจากรอบก่อนหน้าทั้งหมด ไม่งั้นถ้ามี auto-refresh หรือ request ค้างอยู่
             // ตอนกดออกจากระบบ (isFetchingData ค้างเป็น true, lastDataSnapshot เทียบกับข้อมูลรอบเก่า) จะทำให้
@@ -5893,13 +5893,13 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
 
             if (!uid) {
                 try {
-                    const sessionStr = localStorage.getItem('user_session');
+                    const sessionStr = localStorage.getItem('sb_user_session');
                     if (sessionStr) {
                         const session = JSON.parse(sessionStr);
                         if (session && session.uid && (Date.now() - session.timestamp < 86400000)) {
                             uid = session.uid;
                         } else {
-                            localStorage.removeItem('user_session');
+                            localStorage.removeItem('sb_user_session');
                             clearSessionToken(); // ★ เพิ่ม: เซสชันหมดอายุฝั่ง client ก็ล้าง token ทิ้งด้วย
                         }
                     }
@@ -6172,7 +6172,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         const u = _inventoryData.users.find(x => x.userId === uid);
                         if (u) { currentUserProfile.name = u.name; currentUserProfile.role = u.role; }
                     }
-                    localStorage.setItem('user_session', JSON.stringify({
+                    localStorage.setItem('sb_user_session', JSON.stringify({
                         uid: currentUserProfile.uid,
                         name: currentUserProfile.name,
                         role: currentUserProfile.role,

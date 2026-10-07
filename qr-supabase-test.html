@@ -1475,7 +1475,7 @@ window.addEventListener('DOMContentLoaded', () => {
     
     let restored = false;
     try {
-      const sessionStr = localStorage.getItem('user_session');
+      const sessionStr = localStorage.getItem('sb_user_session');
       if (sessionStr) {
         const session = JSON.parse(sessionStr);
         if (session && session.uid && (Date.now() - session.timestamp < 21600000)) {
@@ -1487,7 +1487,7 @@ window.addEventListener('DOMContentLoaded', () => {
             loginSuccess(session.uid);
             restored = true;
           } else {
-            localStorage.removeItem('user_session');
+            localStorage.removeItem('sb_user_session');
           }
         }
       }
@@ -1747,7 +1747,7 @@ function doLogin() {
 function loginSuccess(uid) {
   const u  = (allData.users || []).find(x => x.userId === uid);
   me = { uid, name: u ? u.name : 'ผู้ใช้', role: u ? u.role : 'user', photoUrl: u ? (u.photoUrl || null) : null };
-  localStorage.setItem('user_session', JSON.stringify({
+  localStorage.setItem('sb_user_session', JSON.stringify({
     uid: me.uid,
     name: me.name,
     role: me.role,
@@ -2011,7 +2011,7 @@ function confirmLogout() {
     confirmButtonColor: '#ef5350', background: '#1e1e1e', color: '#c0c0c0',
   }).then(r => {
     if (!r.isConfirmed) return;
-    localStorage.removeItem('user_session');
+    localStorage.removeItem('sb_user_session');
     try {
       sessionStorage.removeItem('withdrawCart');
       sessionStorage.removeItem('borrowCart');
@@ -3491,8 +3491,8 @@ document.addEventListener('DOMContentLoaded', () => { _renderOfflineBanner(); if
 // ที่ยิงผ่าน fetch (ช่องทาง 2 ด้านล่าง) — backend เพิ่งเพิ่มระบบตรวจ token นี้เข้ามา ถ้าไม่แนบไปด้วย
 // ทุกฟังก์ชันที่ไม่ได้อยู่ใน PUBLIC_FNS (เช่น webBatchTransaction ตอนกดส่งคำขอ) จะโดนปฏิเสธด้วย
 // "เซสชันหมดอายุหรือไม่ถูกต้อง" เสมอ ไม่ว่าจะล็อกอินถูกแค่ไหนก็ตาม
-function getSessionToken() { try { return localStorage.getItem('qr_sess_token') || ''; } catch (e) { return ''; } }
-function setSessionToken(t) { try { if (t) localStorage.setItem('qr_sess_token', t); } catch (e) {} }
+function getSessionToken() { try { return localStorage.getItem('sb_qr_sess_token') || ''; } catch (e) { return ''; } }
+function setSessionToken(t) { try { if (t) localStorage.setItem('sb_qr_sess_token', t); } catch (e) {} }
 
 function callGASQueued(fn, args, onOk, onFail) {
   if (!navigator.onLine) {
@@ -3511,8 +3511,8 @@ function _handleSessionExpired() {
   // แทนที่จะโชว์แค่ popup error แล้วผู้ใช้งงว่าต้องกดอะไรต่อ (เดิมเห็นหน้าจอเหมือนยังล็อกอินอยู่ กดปุ่ม
   // อะไรก็ error ซ้ำๆ ไม่รู้ต้องไปกดออกจากระบบเองก่อน)
   try {
-    localStorage.removeItem('user_session');
-    localStorage.removeItem('qr_sess_token');
+    localStorage.removeItem('sb_user_session');
+    localStorage.removeItem('sb_qr_sess_token');
     sessionStorage.removeItem('withdrawCart');
     sessionStorage.removeItem('borrowCart');
     sessionStorage.removeItem('receiveCart');
