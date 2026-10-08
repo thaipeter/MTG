@@ -1657,7 +1657,13 @@ function startUserPoll() {
 let _allUsers = [];
 
 function populateUsers(users) {
-  _allUsers = users || [];
+  // เรียงตามบทบาท: admin → staff → user → qr แล้วค่อยเรียงชื่อ ก-ฮ ภายในกลุ่มเดียวกัน
+  const _roleOrder = { admin: 0, staff: 1, user: 2, qr: 3 };
+  _allUsers = (users || []).slice().sort((a, b) => {
+    const ra = _roleOrder[a.role] ?? 9, rb = _roleOrder[b.role] ?? 9;
+    if (ra !== rb) return ra - rb;
+    return String(a.name || '').localeCompare(String(b.name || ''), 'th');
+  });
   renderUserDropdown('');
 }
 
