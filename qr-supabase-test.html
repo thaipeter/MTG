@@ -313,7 +313,11 @@ body{display:flex;flex-direction:column}
 }
 .cat-card:hover{border-color:var(--amber)!important;transform:translateY(-2px);background:rgba(232,160,32,0.12)!important}
 .cat-card:active{transform:scale(.96)}
-.cat-icon{font-size:28px;line-height:1}
+.cat-icon{font-size:28px;line-height:1;display:flex;align-items:center;justify-content:center;width:100%}
+.cat-icon .cat-img{width:100%;height:76px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,.45));transition:transform .2s ease}
+.cat-card:hover .cat-img{transform:scale(1.06)}
+.cat-card.all-card .cat-icon{width:auto}
+.cat-card.all-card .cat-icon .cat-img{width:64px;height:48px}
 .cat-name{font-size:13px;font-weight:700;color:#fff;line-height:1.3}
 .cat-count{font-size:11px;color:var(--text2);font-weight:600}
 
@@ -2333,6 +2337,15 @@ const CAT_ICON = {
   'Power Tools':'🔌','default':'📦'
 };
 function catIcon(cat) { return CAT_ICON[cat] || CAT_ICON['default']; }
+// รูปประจำหมวด: วางไฟล์ไว้ที่ cat-icons/<ชื่อหมวด>.png (หมวด "ทั้งหมด" ใช้ cat-icons/all.png)
+// ถ้าไม่มีไฟล์ จะกลับไปใช้อีโมจิเดิมอัตโนมัติ
+function catIconHtml(cat, isAll) {
+  const file = isAll ? 'all' : String(cat);
+  const src = 'cat-icons/' + encodeURIComponent(file) + '.png';
+  const emoji = isAll ? '🗂️' : catIcon(cat);
+  return '<span class="cat-icon"><img class="cat-img" src="' + src + '" alt="" loading="lazy" decoding="async" ' +
+    'onerror="this.parentNode.classList.add(\'noimg\');this.replaceWith(document.createTextNode(\'' + emoji + '\'))"></span>';
+}
 
 function renderCats(mode) {
   const gridId = mode === 'withdraw' ? 'wCatGrid' : 'bCatGrid';
@@ -2348,7 +2361,7 @@ function renderCats(mode) {
   const cats = Object.keys(catMap).sort();
   grid.innerHTML =
     `<div class="cat-card all-card" onclick="selectCat('${mode}','__all__')">
-      <div class="cat-icon">🗂️</div>
+      ${catIconHtml('', true)}
       <div>
         <div class="cat-name">ทั้งหมด</div>
         <div class="cat-count">${items.length} รายการ</div>
@@ -2356,7 +2369,7 @@ function renderCats(mode) {
     </div>` +
     cats.map(c => `
     <div class="cat-card" onclick="selectCat('${mode}','${esc(c)}')">
-      <div class="cat-icon">${catIcon(c)}</div>
+      ${catIconHtml(c, false)}
       <div class="cat-name">${esc(c)}</div>
       <div class="cat-count">${catMap[c].availCount}/${catMap[c].count} รายการ${catMap[c].hasStock ? '' : ' · <span style="color:var(--red)">หมด</span>'}</div>
     </div>`).join('');
