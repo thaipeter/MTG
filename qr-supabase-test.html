@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/png" href="logo-mountain.png">
 <title>ทำรายการ</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -4890,15 +4890,8 @@ document.addEventListener('change', e => {
   }
 });
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('./service-worker.js').then(function(reg) {
-      console.log('PWA ServiceWorker registered');
-    }).catch(function(err) {
-      console.log('PWA ServiceWorker registration failed: ', err);
-    });
-  });
-}
+// (ถอดการลงทะเบียน service-worker.js และลิงก์ manifest.json แบบไฟล์ออก: ไม่มีไฟล์ในรีโป ทำให้ขึ้น 404 ทุกครั้ง
+//  ส่วน manifest ของแอปยังถูกสร้างอัตโนมัติจากโลโก้ในตั้งค่า ผ่าน updateDynamicManifest)
 </script>
 <!-- Modal: ประวัติเก่า (Archive) ของฉัน -->
 <div class="arch-modal" id="archModal" onclick="if(event.target===this)closeArchiveHistory()">
