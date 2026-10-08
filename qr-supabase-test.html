@@ -2354,7 +2354,7 @@ function catIconHtml(cat, isAll) {
   const key = isAll ? 'all' : catSvgKey(cat);
   const emoji = isAll ? '🗂️' : catIcon(cat);
   if (!key) return '<span class="cat-icon">' + emoji + '</span>';
-  return '<span class="cat-icon"><img class="cat-img" src="cat-icons/' + key + '.svg" alt="" loading="lazy" decoding="async" ' +
+  return '<span class="cat-icon"><img class="cat-img" src="cat-icons/' + key + '.svg?v=2" alt="" loading="lazy" decoding="async" ' +
     'onerror="this.replaceWith(document.createTextNode(\'' + emoji + '\'))"></span>';
 }
 
