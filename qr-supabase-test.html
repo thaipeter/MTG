@@ -1541,6 +1541,7 @@ window.addEventListener('DOMContentLoaded', () => {
           // หน้า login) แต่ token จริงหมดอายุไปแล้ว กดบันทึกรายการอะไรก็ error ทันที — แก้ให้ตรงกับ backend
           const userExists = (allData.users || []).some(x => x.userId === session.uid);
           if (userExists) {
+            populateUsers(allData.users || []);
             loginSuccess(session.uid);
             restored = true;
           } else {
@@ -2098,6 +2099,11 @@ function confirmLogout() {
     if (niTabLo) niTabLo.style.display = 'none';
     switchTab('withdraw');
     show('loginScreen'); document.getElementById('appWrap').classList.remove('visible');
+    // ★ แก้บั๊ก: ถ้าเข้าแอปด้วยเซสชันที่จำไว้ รายชื่อในหน้า login ไม่เคยถูกโหลด พอออกจากระบบจึงขึ้น "ไม่พบชื่อที่ค้นหา"
+    populateUsers(allData.users || []);
+    callGAS('getLoginUsers', [], users => {
+      if (users && users.length) { allData.users = users; if (!document.getElementById('loginUid').value) populateUsers(users); }
+    }, () => {});
   });
 }
 
