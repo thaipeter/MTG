@@ -2419,7 +2419,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         <button class="btn btn-secondary btn-sm" onclick="loadData()" title="อัปเดตข้อมูล" aria-label="อัปเดตข้อมูล"><i class="fas fa-sync-alt"></i></button>
                         
                         <!-- Notifications icon matching mockup -->
-                        <div style="position:relative; cursor:pointer;" onclick="goTo('pendingApprovals')" class="admin-only-element" title="รายการรออนุมัติ">
+                        <div style="position:relative; cursor:pointer;" onclick="goToApprovals()" class="admin-only-element" title="รายการรออนุมัติ">
                             <i class="fas fa-bell" style="font-size:18px; color:var(--text-main);"></i>
                             <span class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle d-none" id="navApprovalBellBadge" style="font-size:0.55rem; padding:2px 4px;">0</span>
                         </div>
@@ -14449,6 +14449,23 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                     }
                 }
             });
+        }
+
+        // กดกระดิ่ง: ไปหน้ารออนุมัติ แล้วเปิดแท็บที่มีรายการค้างจริง (เดิมเปิด "อนุมัติผู้ใช้" เสมอ แม้ค้างอยู่ที่ "อนุมัติเบิก")
+        function goToApprovals() {
+            goTo('pendingApprovals');
+            const cnt = id => { const el = document.getElementById(id); if (!el || el.classList.contains('d-none') || el.style.display === 'none') return 0; return parseInt(String(el.textContent).replace(/[^0-9]/g, '')) || 0; };
+            const pick = () => {
+                const order = [['badge-pending-withdraw', '#tabApproveWithdraw'], ['badge-pending-borrow', '#tabApproveBorrow'], ['badge-pending-users', '#tabApproveUsers']];
+                let target = null;
+                if (typeof _pendingReqCount !== 'undefined' && _pendingReqCount > 0) target = '#tabApproveWithdraw';
+                else for (const [id, t] of order) { if (cnt(id) > 0) { target = t; break; } }
+                if (!target) return;
+                const b = document.querySelector('#pendingApprovalTabs [data-bs-target="' + target + '"]');
+                if (b) bootstrap.Tab.getOrCreateInstance(b).show();
+            };
+            setTimeout(pick, 80);
+            setTimeout(pick, 900);   // ตัวเลขบนแท็บอาจโหลดทีหลัง ลองเลือกอีกรอบ
         }
 
         function refreshPendingApprovalBadge() {
