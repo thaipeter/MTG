@@ -6,7 +6,93 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <style>html,body{background-color:#0f0f0f!important}</style>
+    <style>html,body{background-color:#0f0f0f!important}
+/* ===== ป๊อปอัพดีไซน์ใหม่: ทำรายการ (เบิก/รับเข้า) + ขึ้นทะเบียนรายการใหม่ ===== */
+#txModal{--tx-c:#ef4444;--tx-c2:#b91c1c;--tx-soft:rgba(239,68,68,.12)}
+#txModal.tx-in{--tx-c:#22c55e;--tx-c2:#15803d;--tx-soft:rgba(34,197,94,.12)}
+.modal-content.tx2,.modal-content.ni2{background:#12151d!important;border:1px solid rgba(255,255,255,.1);border-radius:22px;color:#e5e7eb!important;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.65)}
+.tx2-head,.ni2-head{display:flex;align-items:center;gap:14px;padding:1.1rem 1.4rem;border:0!important;position:relative}
+.tx2-head{background:linear-gradient(135deg,var(--tx-soft),transparent 70%)!important}
+.tx2-head::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--tx-c),transparent)}
+.ni2-head{background:linear-gradient(135deg,rgba(232,160,32,.16),transparent 70%)!important}
+.ni2-head::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--primary-color),transparent)}
+.tx2-ico,.ni2-ico{width:46px;height:46px;min-width:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;color:#fff}
+.tx2-ico{background:linear-gradient(135deg,var(--tx-c),var(--tx-c2));box-shadow:0 6px 18px var(--tx-soft)}
+.ni2-ico{background:linear-gradient(135deg,var(--primary-color),var(--primary-hover));color:#1a1204;box-shadow:0 6px 18px rgba(232,160,32,.3)}
+.tx2-head .modal-title,.ni2-head .modal-title{font-weight:800;font-size:1.15rem;color:#fff;margin:0}
+.tx2-sub,.ni2-sub{font-size:.8rem;color:#94a3b8;margin-top:2px}
+.tx2-body,.ni2-body{background:#12151d!important;padding:1.2rem 1.4rem!important}
+.tx2-step{display:flex;align-items:center;gap:10px;font-weight:700;color:#fff;margin:1.1rem 0 .6rem;font-size:.95rem}
+.tx2-step:first-child{margin-top:0}
+.tx2-num{width:24px;height:24px;border-radius:50%;background:var(--tx-soft);color:var(--tx-c);display:inline-flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:800}
+.tx2-lbl{font-size:.8rem;color:#94a3b8;font-weight:600;margin-bottom:4px}
+#txModal .form-control,#txModal .form-select{background:#0b0d13!important;border:1px solid rgba(255,255,255,.12)!important;color:#fff!important;border-radius:12px;padding:.6rem .85rem}
+#txModal .form-control:focus,#txModal .form-select:focus{border-color:var(--tx-c)!important;box-shadow:0 0 0 3px var(--tx-soft)!important}
+.tx2-filter{display:flex;align-items:center;gap:8px;margin-bottom:8px;color:#94a3b8;font-size:.85rem}
+.tx2-filter .form-select{flex:1}
+#txModal .ts-control{background:#0b0d13!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:12px;padding:.65rem .85rem;color:#fff!important}
+#txModal .ts-control input,#txModal .ts-control .item{color:#fff!important}
+#txModal .ts-wrapper.focus .ts-control{border-color:var(--tx-c)!important;box-shadow:0 0 0 3px var(--tx-soft)}
+.tx2-info{display:flex;align-items:center;gap:14px;margin-top:10px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08)}
+.tx2-info img,.tx2-noimg{width:54px;height:54px;border-radius:12px;object-fit:cover;background:#0b0d13;display:flex;align-items:center;justify-content:center;color:#475569;font-size:1.3rem;flex:none}
+.tx2-info-main{flex:1;min-width:0}
+.tx2-code{font-family:ui-monospace,monospace;font-weight:800;color:var(--tx-c);font-size:.85rem}
+.tx2-name{font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx2-meta{display:flex;gap:12px;flex-wrap:wrap;font-size:.75rem;color:#94a3b8;margin-top:2px}
+.tx2-stock{text-align:center;padding-left:14px;border-left:1px solid rgba(255,255,255,.1)}
+.tx2-stock small{display:block;color:#94a3b8;font-size:.7rem}
+.tx2-stock b{font-size:1.5rem;color:#fff;line-height:1.1}
+.tx2-stock b.low{color:#f59e0b}
+.tx2-qty{display:flex;gap:10px;align-items:stretch}
+.tx2-qty .form-control{text-align:center;font-size:1.9rem;font-weight:800;color:var(--tx-c)!important;padding:.35rem;border-radius:14px}
+.tx2-stepbtn{width:60px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#fff;font-size:1rem;transition:.15s}
+.tx2-stepbtn:hover{background:var(--tx-soft);border-color:var(--tx-c);color:var(--tx-c)}
+.tx2-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tx2-chips button{padding:5px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:transparent;color:#cbd5e1;font-size:.82rem;font-weight:600;transition:.15s}
+.tx2-chips button:hover{background:var(--tx-soft);border-color:var(--tx-c);color:var(--tx-c)}
+.tx2-preview{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding:10px 14px;border-radius:12px;font-weight:700;background:var(--tx-soft);color:#fff}
+.tx2-preview .after{font-size:1.15rem;color:var(--tx-c)}
+.tx2-preview em{font-style:normal;font-size:.8rem;font-weight:600;margin-left:auto}
+.tx2-preview.warn{background:rgba(245,158,11,.14)}.tx2-preview.warn .after,.tx2-preview.warn em{color:#f59e0b}
+.tx2-preview.bad{background:rgba(239,68,68,.16)}.tx2-preview.bad .after,.tx2-preview.bad em{color:#f87171}
+.tx2-foot,.ni2-foot{background:#0d1017!important;border-top:1px solid rgba(255,255,255,.08)!important;padding:.9rem 1.4rem!important;gap:10px}
+.tx2-cancel{background:transparent;border:1px solid rgba(255,255,255,.15);color:#cbd5e1;border-radius:12px;padding:.6rem 1.3rem;font-weight:600}
+.tx2-cancel:hover{background:rgba(255,255,255,.06);color:#fff}
+.tx2-submit{background:linear-gradient(135deg,var(--tx-c),var(--tx-c2));color:#fff;border:0;border-radius:12px;padding:.65rem 2.2rem;font-weight:800;box-shadow:0 8px 22px var(--tx-soft)}
+.tx2-submit:hover{filter:brightness(1.1);color:#fff}
+.tx2-submit:disabled{opacity:.6}
+/* ขึ้นทะเบียนรายการใหม่ */
+.ni2 .card{border-radius:16px}
+.ni2 .form-control,.ni2 .form-select{background:#0b0d13!important;border:1px solid rgba(255,255,255,.12)!important;color:#fff!important;border-radius:10px}
+.ni2 .form-control:focus,.ni2 .form-select:focus{border-color:var(--primary-color)!important;box-shadow:0 0 0 3px rgba(232,160,32,.18)!important}
+.ni2 .form-control[readonly]{background:#0f1118!important;color:#94a3b8!important}
+.ni2-count{background:rgba(232,160,32,.18);color:var(--primary-color);border-radius:999px;margin-left:6px}
+.ni2-add{background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.4);color:#4ade80;border-radius:10px;font-weight:700}
+.ni2-add:hover{background:#22c55e;color:#04150a}
+.ni2-save{background:linear-gradient(135deg,var(--primary-color),var(--primary-hover));color:#1a1204;border:0;border-radius:12px;padding:.65rem 2rem;font-weight:800;box-shadow:0 8px 22px rgba(232,160,32,.25)}
+.ni2-save:hover{filter:brightness(1.08);color:#1a1204}
+.ni2-list table,.ni2-list tbody{display:block;width:100%;background:transparent!important}
+.ni2-list thead{display:none}
+.ni2-list tbody tr{display:grid;grid-template-columns:repeat(12,1fr);gap:10px 12px;position:relative;padding:14px 16px;margin-bottom:12px;border-radius:16px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09)}
+.ni2-list tbody tr:hover{border-color:rgba(232,160,32,.35)}
+.ni2-list tbody td{display:block;padding:0!important;border:0!important;background:transparent!important;min-width:0}
+.ni2-list tbody td::before{content:attr(data-label);display:block;font-size:.72rem;font-weight:700;color:#94a3b8;margin-bottom:3px}
+.ni2-list tbody td:nth-child(1){grid-column:span 4}
+.ni2-list tbody td:nth-child(2){grid-column:span 8;padding-right:42px!important}
+.ni2-list tbody td:nth-child(3){grid-column:span 4}
+.ni2-list tbody td:nth-child(4){grid-column:span 2}
+.ni2-list tbody td:nth-child(5){grid-column:span 2}
+.ni2-list tbody td:nth-child(6){grid-column:span 2}
+.ni2-list tbody td:nth-child(7){grid-column:span 2}
+.ni2-list tbody td:nth-child(8){grid-column:span 12;text-align:left!important}
+.ni2-list tbody td:nth-child(8) .d-flex{flex-direction:row!important;justify-content:flex-start;gap:10px!important}
+.ni2-list tbody td.ni2-del{position:absolute;top:12px;right:12px;width:auto}
+.ni2-list tbody td.ni2-del::before{display:none}
+.ni2-list tbody td.ni2-del .btn{width:34px;height:34px;padding:0;border-radius:10px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.35);color:#f87171}
+.ni2-list tbody td.ni2-del .btn:hover{background:#ef4444;color:#fff}
+.ni2-list .price-only-element[style*="display: none"],.ni2-list .price-only-element.d-none{display:none!important}
+@media(max-width:576px){.ni2-list tbody td:nth-child(n+3):nth-child(-n+7){grid-column:span 6}.ni2-list tbody td:nth-child(1),.ni2-list tbody td:nth-child(2){grid-column:span 12}.tx2-stock{display:none}}
+</style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
     <title>คลังอะไหล่เมาท์เทน</title>
@@ -1717,17 +1803,21 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
 
     <div class="modal fade" id="newItemModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-xl">
-            <div class="modal-content">
-                <div class="modal-header bg-theme">
-                    <h5 class="modal-title fw-bold text-white" id="newItemModalTitle"><i class="fas fa-plus-circle me-2"></i> ขึ้นทะเบียนรายการใหม่ (รองรับหลายรายการ)</h5>
+            <div class="modal-content ni2">
+                <div class="modal-header ni2-head">
+                    <div class="ni2-ico"><i class="fas fa-plus"></i></div>
+                    <div class="flex-grow-1">
+                        <h5 class="modal-title" id="newItemModalTitle">ขึ้นทะเบียนรายการใหม่</h5>
+                        <div class="ni2-sub">เพิ่มได้หลายรายการในครั้งเดียว · รหัสสร้างอัตโนมัติจากหมวดหมู่</div>
+                    </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
+                <div class="modal-body ni2-body">
                     <form id="newItemForm">
                         <!-- Global Settings -->
                         <div class="card mb-4 shadow-sm" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)!important;">
                             <div class="card-header border-bottom" style="background:rgba(255,255,255,0.02)!important;">
-                                <h6 class="mb-0 fw-bold text-white"><i class="fas fa-cog text-primary me-2"></i>ข้อมูลทั่วไป</h6>
+                                <h6 class="mb-0 fw-bold text-white"><i class="fas fa-sliders-h me-2" style="color:var(--primary-color)"></i>ข้อมูลทั่วไป <small class="text-muted fw-normal">ใช้กับทุกรายการด้านล่าง</small></h6>
                             </div>
                             <div class="card-body">
                                 <div class="row g-3">
@@ -1764,10 +1854,10 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
 
                         <!-- Items Table -->
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <label class="form-label fw-bold text-dark mb-0"><i class="fas fa-list text-primary me-2"></i>รายละเอียดสินค้า</label>
-                            <button type="button" class="btn btn-sm btn-success fw-bold" onclick="addNewItemRow()"><i class="fas fa-plus me-1"></i>เพิ่มแถว</button>
+                            <label class="form-label fw-bold text-white mb-0"><i class="fas fa-list me-2" style="color:var(--primary-color)"></i>รายการสินค้า <span class="badge ni2-count" id="niCount">1</span></label>
+                            <button type="button" class="btn btn-sm ni2-add" onclick="addNewItemRow()"><i class="fas fa-plus me-1"></i>เพิ่มรายการ</button>
                         </div>
-                        <div class="table-responsive border rounded-3 shadow-sm" style="background:var(--card-bg);">
+                        <div class="ni2-list">
                             <table class="table table-sm align-middle mb-0" id="newItemsTable">
                                 <thead class="bg-light border-bottom">
                                     <tr class="small fw-bold text-muted">
@@ -1788,9 +1878,9 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer bg-light border-top pt-3 pb-3 px-4">
-                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">ยกเลิก</button>
-                    <button type="button" class="btn btn-theme fw-bold shadow-md px-4" onclick="submitNewItems()"><i class="fas fa-save me-1"></i> บันทึกทั้งหมด</button>
+                <div class="modal-footer ni2-foot">
+                    <button type="button" class="btn tx2-cancel" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn ni2-save" onclick="submitNewItems()"><i class="fas fa-save me-2"></i>บันทึกทั้งหมด</button>
                 </div>
             </div>
         </div>
@@ -2021,47 +2111,64 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
     </div>
     <div class="modal fade" id="txModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content shadow-lg" style="background:rgba(22,25,34,0.95);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.12);border-radius:20px;color:#fff;">
-                <div class="modal-header border-bottom border-secondary border-opacity-25" id="txModalHeader" style="border-radius:20px 20px 0 0;padding:1.25rem 1.5rem;">
-                    <h5 class="modal-title fw-bold" id="txModalTitle"><i class="fas fa-exchange-alt me-2"></i> ทำรายการ</h5>
+            <div class="modal-content tx2">
+                <div class="modal-header tx2-head" id="txModalHeader">
+                    <div class="tx2-ico" id="txModalIcon"><i class="fas fa-exchange-alt"></i></div>
+                    <div class="flex-grow-1">
+                        <h5 class="modal-title" id="txModalTitle">ทำรายการ</h5>
+                        <div class="tx2-sub" id="txModalSub">เลือกสินค้า ระบุจำนวน แล้วยืนยัน</div>
+                    </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
-                    <form id="txForm" class="p-4 rounded-4 shadow-sm" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+                <div class="modal-body tx2-body">
+                    <form id="txForm" onsubmit="return false;">
                         <input type="hidden" id="txType">
-                        <div class="mb-4">
-                            <label class="form-label text-warning small fw-bold"><i class="fas fa-filter me-1"></i> กรองดูเฉพาะหมวดหมู่ (ตัวเลือกเสริม)</label>
-                            <select class="form-select text-white" id="txCategory" onchange="updateTxItemOptions()" style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.12);border-radius:10px;">
-                                <option value="" class="bg-dark text-white">-- ไม่กรอง (แสดงทั้งหมด) --</option>
+
+                        <div class="tx2-step"><span class="tx2-num">1</span> เลือกสินค้า <span class="text-danger">*</span></div>
+                        <div class="tx2-filter">
+                            <i class="fas fa-filter"></i>
+                            <select class="form-select form-select-sm" id="txCategory" onchange="updateTxItemOptions()">
+                                <option value="">-- ไม่กรองหมวดหมู่ (แสดงทั้งหมด) --</option>
                             </select>
                         </div>
-                        <div class="mb-4">
-                            <label class="form-label text-white fw-bold fs-6">เลือกสินค้า/อะไหล่ที่จะทำรายการ <span class="text-danger">*</span></label>
-                            <select id="txItemCode" placeholder="🔍 พิมพ์ค้นหารหัส หรือ ชื่อรายการ..." autocomplete="off" required></select>
+                        <select id="txItemCode" placeholder="🔍 พิมพ์ค้นหารหัส หรือ ชื่อรายการ..." autocomplete="off" required></select>
+                        <div class="tx2-info" id="txInfo" style="display:none;"></div>
+
+                        <div class="tx2-step"><span class="tx2-num">2</span> จำนวน <span class="text-danger">*</span></div>
+                        <div class="tx2-qty">
+                            <button type="button" class="tx2-stepbtn" onclick="txStep(-1)" aria-label="ลดจำนวน"><i class="fas fa-minus"></i></button>
+                            <input type="number" class="form-control" id="txQty" min="1" step="1" placeholder="0" required oninput="updateTxPreview()">
+                            <button type="button" class="tx2-stepbtn" onclick="txStep(1)" aria-label="เพิ่มจำนวน"><i class="fas fa-plus"></i></button>
                         </div>
-                        <div class="row g-4 mb-4 border-top border-secondary border-opacity-25 pt-3">
-                            <div class="col-12 col-md-4">
-                                <label class="form-label text-white fw-bold">จำนวน <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control form-control-lg text-center fw-bold text-warning shadow-sm" id="txQty" min="1" step="1" placeholder="ระบุจำนวน" required style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;">
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <label class="form-label text-white fw-bold">วันที่ทำรายการ <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control form-control-lg shadow-sm text-center text-white" id="txDate" required style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.12);border-radius:10px;">
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <label class="form-label text-white fw-bold">ชื่อผู้ทำรายการ <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control form-control-lg shadow-sm text-white" id="txUser" placeholder="ชื่อพนักงาน" required style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.12);border-radius:10px;">
-                            </div>
+                        <div class="tx2-chips">
+                            <button type="button" onclick="txAdd(1)">+1</button>
+                            <button type="button" onclick="txAdd(5)">+5</button>
+                            <button type="button" onclick="txAdd(10)">+10</button>
+                            <button type="button" onclick="txAdd(50)">+50</button>
+                            <button type="button" id="txAllBtn" onclick="txAll()">ทั้งหมด</button>
                         </div>
-                        <div class="mb-2">
-                            <label class="form-label text-white fw-bold">หมายเหตุ / สถานที่นำไปใช้ <span id="txRemarkReq" class="text-danger d-none">*</span></label>
-                            <input type="text" class="form-control shadow-sm text-white" id="txRemark" placeholder="เช่น ซ่อม Line 1, เติมสต็อก..." style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.12);border-radius:10px;">
+                        <div class="tx2-preview" id="txPreview" style="display:none;"></div>
+
+                        <div class="tx2-step"><span class="tx2-num">3</span> รายละเอียด</div>
+                        <div class="row g-3">
+                            <div class="col-12 col-sm-6">
+                                <label class="tx2-lbl">วันที่ทำรายการ <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="txDate" required>
+                            </div>
+                            <div class="col-12 col-sm-6">
+                                <label class="tx2-lbl">ผู้ทำรายการ <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="txUser" placeholder="ชื่อพนักงาน" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="tx2-lbl">หมายเหตุ / สถานที่นำไปใช้ <span id="txRemarkReq" class="text-danger d-none">*</span></label>
+                                <input type="text" class="form-control" id="txRemark" placeholder="เช่น ซ่อม Line 1, เติมสต็อก...">
+                            </div>
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer px-4 pb-4 border-0">
-                    <button type="button" class="btn btn-outline-secondary text-white" data-bs-dismiss="modal" style="border-radius:10px;">ยกเลิก</button>
-                    <button type="button" class="btn btn-success fw-bold shadow-md px-5 py-2 fs-6" id="txSubmitBtn" onclick="submitTransaction()" style="border-radius:10px;">ยืนยันทำรายการ</button>
+                <div class="modal-footer tx2-foot">
+                    <button type="button" class="btn tx2-cancel" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="button" class="btn tx2-submit" id="txSubmitBtn" onclick="submitTransaction()">ยืนยันทำรายการ</button>
                 </div>
             </div>
         </div>
@@ -9435,15 +9542,47 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
 
         function openTxModal(type) {
             document.getElementById('txForm').reset(); document.getElementById('txType').value = type;
-            const header = document.getElementById('txModalHeader'); const title = document.getElementById('txModalTitle'); const btn = document.getElementById('txSubmitBtn');
-            if(type === 'รับเข้า') { header.className = 'modal-header bg-success text-white border-0'; title.innerHTML = '<i class="fas fa-arrow-up me-2"></i> รับเข้าคลัง (Check-in)'; btn.className = 'btn btn-success fw-bold shadow-md px-5 py-2 fs-6'; btn.innerText = 'บันทึกยอดรับเข้า'; } 
-            else { header.className = 'modal-header bg-danger text-white border-0'; title.innerHTML = '<i class="fas fa-arrow-down me-2"></i> เบิกออกไปใช้งาน (Check-out)'; btn.className = 'btn btn-danger fw-bold shadow-md px-5 py-2 fs-6'; btn.innerText = 'ยืนยันการเบิกออก'; }
+            const btn = document.getElementById('txSubmitBtn'); const modalEl = document.getElementById('txModal');
+            const isIn = (type === 'รับเข้า');
+            modalEl.classList.toggle('tx-in', isIn); modalEl.classList.toggle('tx-out', !isIn);
+            document.getElementById('txModalIcon').innerHTML = isIn ? '<i class="fas fa-arrow-down"></i>' : '<i class="fas fa-arrow-up"></i>';
+            document.getElementById('txModalTitle').textContent = isIn ? 'รับเข้าคลัง' : 'เบิกออกไปใช้งาน';
+            document.getElementById('txModalSub').textContent = isIn ? 'Check-in · เพิ่มยอดคงเหลือเข้าสต็อก' : 'Check-out · ตัดยอดคงเหลือออกจากสต็อก';
+            btn.className = 'btn tx2-submit'; btn.innerHTML = isIn ? '<i class="fas fa-check me-2"></i>บันทึกยอดรับเข้า' : '<i class="fas fa-check me-2"></i>ยืนยันการเบิกออก';
+            const allBtn = document.getElementById('txAllBtn'); if (allBtn) allBtn.style.display = isIn ? 'none' : '';
+            const _inf = document.getElementById('txInfo'); if (_inf) _inf.style.display = 'none'; const _pv = document.getElementById('txPreview'); if (_pv) _pv.style.display = 'none';
             const txUserEl = document.getElementById('txUser'); txUserEl.value = currentUserProfile.name; txUserEl.readOnly = true; txUserEl.classList.add('bg-light');
             const txDateEl = document.getElementById('txDate'); txDateEl.value = new Date().toISOString().slice(0, 10);
             const catSelect = document.getElementById('txCategory'); catSelect.innerHTML = '<option value="">-- ไม่กรอง (แสดงทั้งหมด) --</option>';
             const uniqueCats = getCombinedCategories(allData.items.concat(allData.tools));
             uniqueCats.forEach(cat => { let opt = document.createElement('option'); opt.value = cat; opt.text = cat; catSelect.appendChild(opt); });
             catSelect.value = ''; updateTxItemOptions(); txModal.show();
+        }
+
+
+        // ---- ป๊อปอัพทำรายการ (เบิก/รับเข้า): การ์ดข้อมูลสินค้า + ตัวปรับจำนวน + พรีวิวยอดหลังทำรายการ ----
+        function _txItem() { const c = document.getElementById('txItemCode').value; return c ? (allData.items.find(i => i.code === c) || allData.tools.find(i => i.code === c)) : null; }
+        function txStep(d) { const el = document.getElementById('txQty'); const v = parseInt(el.value) || 0; el.value = Math.max(1, v + d); updateTxPreview(); }
+        function txAdd(n) { const el = document.getElementById('txQty'); el.value = (parseInt(el.value) || 0) + n; updateTxPreview(); }
+        function txAll() { const it = _txItem(); if (!it) return; document.getElementById('txQty').value = Math.max(1, Math.floor(Number(it.stock) || 0)); updateTxPreview(); }
+        function updateTxPreview() {
+            const info = document.getElementById('txInfo'), pv = document.getElementById('txPreview'); if (!info || !pv) return;
+            const it = _txItem(); const isOut = document.getElementById('txType').value !== 'รับเข้า';
+            if (!it) { info.style.display = 'none'; pv.style.display = 'none'; return; }
+            const stock = Number(it.stock) || 0, min = Number(it.min) || 0;
+            info.style.display = 'flex';
+            info.innerHTML = `${it.imageUrl ? `<img src="${escapeHtml(it.imageUrl)}" alt="">` : '<div class="tx2-noimg"><i class="fas fa-box"></i></div>'}
+                <div class="tx2-info-main"><div class="tx2-code">${escapeHtml(it.code)}</div><div class="tx2-name">${escapeHtml(it.name || '')}</div>
+                <div class="tx2-meta">${it.location ? `<span><i class="fas fa-map-marker-alt"></i> ${escapeHtml(it.location)}</span>` : ''}<span>Min ${formatNumber(min)} ${escapeHtml(it.unit || '')}</span></div></div>
+                <div class="tx2-stock"><small>คงเหลือ</small><b class="${stock <= min ? 'low' : ''}">${formatNumber(stock)}</b><small>${escapeHtml(it.unit || '')}</small></div>`;
+            const q = parseFloat(document.getElementById('txQty').value);
+            if (!q || q < 1) { pv.style.display = 'none'; return; }
+            const after = isOut ? stock - q : stock + q;
+            let cls = 'ok', note = '';
+            if (isOut && after < 0) { cls = 'bad'; note = `สต็อกไม่พอ — เบิกได้สูงสุด ${formatNumber(stock)}`; }
+            else if (isOut && after <= min) { cls = 'warn'; note = 'ยอดจะต่ำกว่าหรือเท่า Min — ควรสั่งเติม'; }
+            pv.className = 'tx2-preview ' + cls; pv.style.display = 'flex';
+            pv.innerHTML = `<span>${formatNumber(stock)}</span><i class="fas fa-long-arrow-alt-right"></i><span class="after">${formatNumber(after)} ${escapeHtml(it.unit || '')}</span>${note ? `<em>${note}</em>` : ''}`;
         }
 
         function updateTxItemOptions() {
@@ -9464,7 +9603,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     }); select.appendChild(optGroup);
                 }
             });
-            window.txSelectInstance = new TomSelect("#txItemCode", { create: false, sortField: { field: "text", direction: "asc" } });
+            window.txSelectInstance = new TomSelect("#txItemCode", { create: false, sortField: { field: "text", direction: "asc" }, onChange: function() { updateTxPreview(); } });
         }
 
         function submitTransaction() {
@@ -10423,6 +10562,8 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             }
         }
 
+        function updateNewItemCount() { const c = document.querySelectorAll('#newItemsTableBody tr').length; const b = document.getElementById('niCount'); if (b) b.textContent = c; }
+
         function addNewItemRow() {
             const tbody = document.getElementById('newItemsTableBody');
             window.newItemRowCounter = (window.newItemRowCounter || 0) + 1;
@@ -10431,31 +10572,31 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             const row = document.createElement('tr');
             row.id = rowId;
             row.innerHTML = `
-                <td>
+                <td data-label="รหัส">
                     <div class="input-group input-group-sm flex-nowrap" style="min-width: 135px;">
                         <input type="text" class="form-control shadow-sm fw-bold text-primary px-2" data-code-input value="" placeholder="AUTO" readonly style="cursor: pointer; font-size: 0.85rem; min-width: 80px;">
                         <button type="button" class="btn btn-outline-primary btn-sm fw-bold px-2" style="font-size: 0.75rem; white-space: nowrap;" onclick="autoGenerateCodeForRow('${rowId}')" title="เจนรหัสใหม่อัตโนมัติ"><i class="fas fa-magic me-1"></i>Auto</button>
                     </div>
                 </td>
-                <td>
+                <td data-label="ชื่อรายการ">
                     <input type="text" class="form-control form-control-sm shadow-sm fw-bold" data-name-input placeholder="ชื่อรายการ" required>
                 </td>
-                <td>
+                <td data-label="ตำแหน่ง">
                     <input type="text" class="form-control form-control-sm shadow-sm" data-location-input list="locationOptions" placeholder="ตำแหน่ง">
                 </td>
-                <td>
+                <td data-label="หน่วย">
                     <input type="text" class="form-control form-control-sm shadow-sm text-center" data-unit-input placeholder="หน่วย" required>
                 </td>
-                <td>
+                <td data-label="MIN">
                     <input type="number" class="form-control form-control-sm shadow-sm text-center" data-min-input min="0" step="any" value="0">
                 </td>
-                <td class="price-only-element">
+                <td class="price-only-element" data-label="ราคาทุน/หน่วย">
                     <input type="number" class="form-control form-control-sm shadow-sm text-center" data-price-input min="0" step="any" placeholder="ราคา">
                 </td>
-                <td>
+                <td data-label="จำนวนรับเข้า">
                     <input type="number" class="form-control form-control-sm shadow-sm text-center fw-bold text-success" data-qty-input min="0" step="any" placeholder="จำนวน" required>
                 </td>
-                <td class="text-center">
+                <td class="text-center" data-label="รูปภาพ">
                     <div class="d-flex flex-column align-items-center gap-1">
                         <div data-img-preview-${rowId} style="width:40px;height:40px;border-radius:6px;border:1px dashed #ccc;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#f8f9fa;cursor:pointer" title="คลิกเพื่อเลือกรูป" onclick="document.getElementById('imgInp_${rowId}').click()">
                             <i class="fas fa-camera text-muted" style="font-size:14px"></i>
@@ -10464,11 +10605,11 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                         <small data-img-status-${rowId} class="text-muted" style="font-size:9px;line-height:1.2"></small>
                     </div>
                 </td>
-                <td class="text-center">
-                    <button type="button" class="btn btn-sm btn-danger" onclick="removeNewItemRow('${rowId}')"><i class="fas fa-trash"></i></button>
+                <td class="text-center ni2-del">
+                    <button type="button" class="btn btn-sm btn-danger" title="ลบรายการนี้" onclick="removeNewItemRow('${rowId}')"><i class="fas fa-trash"></i></button>
                 </td>
             `;
-            tbody.appendChild(row);
+            tbody.appendChild(row); updateNewItemCount();
             autoGenerateCodeForRow(rowId, true); // silent: ตอนสร้างแถวใหม่ผู้ใช้อาจยังไม่ได้เลือกหมวดหมู่ ไม่ต้องเด้งเตือน
             const nameInp = row.querySelector('[data-name-input]');
             if (nameInp) {
@@ -10528,7 +10669,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
         function removeNewItemRow(rowId) {
             const row = document.getElementById(rowId);
             if (row) {
-                row.remove();
+                row.remove(); updateNewItemCount();
                 validateNewItemNames();
             }
         }
