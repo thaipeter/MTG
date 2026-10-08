@@ -14451,21 +14451,58 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             });
         }
 
-        // กดกระดิ่ง: ไปหน้ารออนุมัติ แล้วเปิดแท็บที่มีรายการค้างจริง (เดิมเปิด "อนุมัติผู้ใช้" เสมอ แม้ค้างอยู่ที่ "อนุมัติเบิก")
+        // กดกระดิ่ง: ดึงรายการค้างจริงก่อน แล้วพาไปแท็บ/การ์ดของรายการนั้นๆ เลย
+        // (ถ้าไม่มีรายการค้างเลย จะไม่พาไปหน้าว่าง แต่แจ้งให้ทราบแทน)
         function goToApprovals() {
-            goTo('pendingApprovals');
-            const cnt = id => { const el = document.getElementById(id); if (!el || el.classList.contains('d-none') || el.style.display === 'none') return 0; return parseInt(String(el.textContent).replace(/[^0-9]/g, '')) || 0; };
-            const pick = () => {
-                const order = [['badge-pending-withdraw', '#tabApproveWithdraw'], ['badge-pending-borrow', '#tabApproveBorrow'], ['badge-pending-users', '#tabApproveUsers']];
-                let target = null;
-                if (typeof _pendingReqCount !== 'undefined' && _pendingReqCount > 0) target = '#tabApproveWithdraw';
-                else for (const [id, t] of order) { if (cnt(id) > 0) { target = t; break; } }
-                if (!target) return;
-                const b = document.querySelector('#pendingApprovalTabs [data-bs-target="' + target + '"]');
-                if (b) bootstrap.Tab.getOrCreateInstance(b).show();
+            const done = { w: false, u: false }; let reqs = [], users = [];
+            const finish = function() {
+                if (!done.w || !done.u) return;
+                const wd = reqs.filter(function(r) { return r.type === 'เบิก'; });
+                const bw = reqs.filter(function(r) { return r.type !== 'เบิก'; });
+                let target = null, firstKey = null;
+                if (wd.length) { target = '#tabApproveWithdraw'; firstKey = String(wd[0].reqId); }
+                else if (bw.length) { target = '#tabApproveBorrow'; firstKey = String(bw[0].reqId); }
+                else if (users.length) { target = '#tabApproveUsers'; }
+                if (!target) {
+                    _pendingReqCount = 0; _pendingUserCountForBadge = 0; _updateMainPendingBadge();
+                    if (typeof Swal !== 'undefined') Swal.fire({icon: 'info', title: 'ไม่มีรายการรออนุมัติ', text: 'ตอนนี้ไม่มีคำขอที่ค้างอยู่', timer: 1800, showConfirmButton: false});
+                    return;
+                }
+                goTo('pendingApprovals');
+                const show = function() {
+                    const b = document.querySelector('#pendingApprovalTabs [data-bs-target="' + target + '"]');
+                    if (b) bootstrap.Tab.getOrCreateInstance(b).show();
+                };
+                const focusFirst = function() {
+                    const pane = document.querySelector(target);
+                    if (!pane) return false;
+                    const card = firstKey ? pane.querySelector('[data-reqid="' + firstKey.replace(/"/g, '') + '"]') : pane.querySelector('.pending-card');
+                    if (!card) return false;
+                    card.scrollIntoView({behavior: 'smooth', block: 'center'});
+                    const box = card.classList.contains('pending-card') ? card : (card.querySelector('.pending-card') || card);
+                    box.style.transition = 'box-shadow .3s'; box.style.boxShadow = '0 0 0 3px #fbbf24';
+                    setTimeout(function() { box.style.boxShadow = ''; }, 2200);
+                    return true;
+                };
+                setTimeout(show, 60);
+                setTimeout(show, 700);
+                let tries = 0;
+                const iv = setInterval(function() { tries++; if (focusFirst() || tries > 10) clearInterval(iv); }, 400);
             };
-            setTimeout(pick, 80);
-            setTimeout(pick, 900);   // ตัวเลขบนแท็บอาจโหลดทีหลัง ลองเลือกอีกรอบ
+            const demo = (!window.GAS_URL && (typeof google === 'undefined' || !google.script || !google.script.run)) || window.location.protocol === 'file:';
+            if (demo) {
+                try { reqs = JSON.parse(localStorage.getItem('demo_pending_withdraws')) || []; } catch(e) { reqs = []; }
+                done.w = done.u = true; finish(); return;
+            }
+            callGAS('webGetPendingWebRequests', [], function(res) {
+                reqs = (res && res.success && res.data) ? res.data : []; done.w = true; finish();
+            }, function() { reqs = []; done.w = true; finish(); });
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(rows) { users = rows || []; done.u = true; finish(); })
+                    .withFailureHandler(function() { users = []; done.u = true; finish(); })
+                    .webGetQRPending();
+            } else { done.u = true; finish(); }
         }
 
         function refreshPendingApprovalBadge() {
