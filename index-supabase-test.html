@@ -97,25 +97,6 @@
 .db2-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:1.1rem}
 .db2-title{font-size:1.9rem;font-weight:800;color:#fff;margin:0;letter-spacing:-.3px}
 .db2-sub{color:#94a3b8;font-size:.9rem;margin:2px 0 0}
-.db2-actions{display:flex;gap:10px}
-.db2-btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 20px;border-radius:12px;font-weight:700;font-size:.95rem;border:1px solid transparent;color:#fff;transition:.15s}
-.db2-btn.in{background:linear-gradient(135deg,#22c55e,#15803d);box-shadow:0 6px 18px rgba(34,197,94,.22)}
-.db2-btn.out{background:linear-gradient(135deg,#ef4444,#b91c1c);box-shadow:0 6px 18px rgba(239,68,68,.22)}
-.db2-btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
-.db2-alerts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.1rem}
-.db2-alert{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:16px;cursor:pointer;text-decoration:none;color:#fff;border:1px solid var(--c-b);background:linear-gradient(135deg,var(--c-bg),rgba(255,255,255,.02));transition:.15s}
-.db2-alert:hover{transform:translateY(-2px);border-color:var(--c)}
-.db2-alert:focus-visible{outline:2px solid var(--c);outline-offset:2px}
-.db2-alert>i:first-child{width:42px;height:42px;min-width:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--c-bg);color:var(--c);font-size:1.1rem}
-.db2-alert div{display:flex;flex-direction:column;line-height:1.25;min-width:0;flex:1}
-.db2-alert b{font-size:1.7rem;font-weight:800;color:var(--c);font-variant-numeric:tabular-nums}
-.db2-alert span{font-size:.82rem;color:#cbd5e1}
-.db2-alert em{font-style:normal;font-size:.78rem;color:#94a3b8;white-space:nowrap}
-.db2-alert.danger{--c:#f87171;--c-bg:rgba(239,68,68,.12);--c-b:rgba(239,68,68,.3)}
-.db2-alert.warn{--c:#fbbf24;--c-bg:rgba(245,158,11,.12);--c-b:rgba(245,158,11,.3)}
-.db2-alert.info{--c:#38bdf8;--c-bg:rgba(56,189,248,.12);--c-b:rgba(56,189,248,.3)}
-.db2-alert.zero{--c:#4ade80;--c-bg:rgba(34,197,94,.08);--c-b:rgba(255,255,255,.08)}
-.db2-alert.zero>i:first-child::before{content:"\f00c"}
 #dashboard .stat-card{--acc:#e8a020;border:1px solid var(--border-color)!important;border-radius:18px!important;padding:16px 18px!important;background:linear-gradient(160deg,rgba(255,255,255,.045),rgba(255,255,255,.01) 60%),var(--card-bg)!important}
 #dashboard .stat-card.border-info{--acc:#38bdf8}
 #dashboard .stat-card.border-danger{--acc:#f87171}
@@ -138,12 +119,13 @@
 #dashboard #dashUnifiedInventoryTable tbody tr{transition:background .15s}
 #dashboard #dashUnifiedInventoryTable tbody tr:hover{background:rgba(255,255,255,.04)}
 #dashboard #dashUnifiedInventoryTable tbody td{padding:12px 14px;vertical-align:middle}
-@media(max-width:768px){.db2-title{font-size:1.5rem}.db2-actions{width:100%}.db2-btn{flex:1;justify-content:center}.db2-alerts{grid-template-columns:1fr}.db2-alert em{display:none}#dashboard .stat-card .stat-value{font-size:1.7rem!important}}
-.db2-lowchip{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;border-radius:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fecaca;font-size:.9rem}
+@media(max-width:768px){.db2-title{font-size:1.5rem}.db2-lowchip{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;border-radius:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fecaca;font-size:.9rem}
 .db2-lowchip>i{color:#f87171}.db2-lowchip b{color:#fff;margin-left:6px}
 .db2-lowchip a{color:#fbbf24;cursor:pointer;text-decoration:underline}
 .db2-lowchip button{margin-left:auto;background:transparent;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;padding:4px 12px;font-size:.82rem}
 .db2-lowchip button:hover{background:rgba(255,255,255,.1)}
+.db2-metric-row{cursor:pointer;padding:8px 10px;margin:0 -10px 2px;border-radius:10px;transition:background .15s}
+.db2-metric-row:hover,.db2-metric-row:focus-visible{background:rgba(255,255,255,.06);outline:none}
 </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
@@ -2437,16 +2419,6 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             <h3 class="db2-title">แดชบอร์ดสรุปผล</h3>
                             <p class="db2-sub"><i class="far fa-calendar-alt me-1"></i><span id="db2Today">-</span> · ภาพรวมระบบคลังสินค้าประจำวัน</p>
                         </div>
-                        <div class="db2-actions">
-                            <button type="button" class="db2-btn in" onclick="openTxModal('รับเข้า')"><i class="fas fa-arrow-down"></i> รับเข้า</button>
-                            <button type="button" class="db2-btn out" onclick="openTxModal('เบิก')"><i class="fas fa-arrow-up"></i> เบิกออก</button>
-                        </div>
-                    </div>
-                    <!-- ต้องดำเนินการ: สิ่งที่ต้องเห็นก่อนอย่างอื่น -->
-                    <div class="db2-alerts" id="db2Alerts">
-                        <a class="db2-alert danger" onclick="showLowStock()" role="button" tabindex="0"><i class="fas fa-exclamation-triangle"></i><div><b id="db2LowCount">0</b><span>อะไหล่ต่ำกว่าเกณฑ์ — ต้องเติมสต็อก</span></div><em>ดูรายการ <i class="fas fa-chevron-right"></i></em></a>
-                        <a class="db2-alert warn" onclick="goTo('borrowedItems')" role="button" tabindex="0"><i class="fas fa-toolbox"></i><div><b id="db2BorrowCount">0</b><span>เครื่องมือถูกยืมออก — รอคืน</span></div><em>ดูรายการ <i class="fas fa-chevron-right"></i></em></a>
-                        <a class="db2-alert info" onclick="goTo('monthlyOrders')" role="button" tabindex="0"><i class="fas fa-file-invoice"></i><div><b id="db2POCount">0</b><span>ใบสั่งซื้อ PO ค้างรับ</span></div><em>ดูรายการ <i class="fas fa-chevron-right"></i></em></a>
                     </div>
                     <!-- Statistics Cards with Sparklines -->
                     <div class="row g-2 mb-4">
@@ -2620,15 +2592,15 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                                     </div>
                                     <!-- Detailed Breakdown -->
                                     <div class="mt-3 pt-3 border-top border-secondary border-opacity-20">
-                                        <div class="d-flex justify-content-between align-items-center mb-2" style="font-size: 16px;">
+                                        <div class="d-flex justify-content-between align-items-center mb-2 db2-metric-row" role="button" tabindex="0" onclick="showLowStock()" style="font-size: 16px;">
                                             <span class="text-muted"><i class="fas fa-exclamation-triangle text-danger me-1"></i> อะไหล่ต่ำกว่าเกณฑ์:</span>
                                             <span id="metricLowStockCount" class="fw-bold text-danger">0 รายการ</span>
                                         </div>
-                                        <div class="d-flex justify-content-between align-items-center mb-2" style="font-size: 16px;">
+                                        <div class="d-flex justify-content-between align-items-center mb-2 db2-metric-row" role="button" tabindex="0" onclick="goTo('borrowedItems')" style="font-size: 16px;">
                                             <span class="text-muted"><i class="fas fa-toolbox text-warning me-1"></i> เครื่องมือถูกยืมออก:</span>
                                             <span id="metricBorrowedCount" class="fw-bold text-warning">0 รายการ</span>
                                         </div>
-                                        <div class="d-flex justify-content-between align-items-center" style="font-size: 16px;">
+                                        <div class="d-flex justify-content-between align-items-center db2-metric-row" role="button" tabindex="0" onclick="goTo('monthlyOrders')" style="font-size: 16px;">
                                             <span class="text-muted"><i class="fas fa-file-invoice text-info me-1"></i> ใบสั่งซื้อ PO ค้างส่ง:</span>
                                             <span id="metricPendingPOCount" class="fw-bold text-info">0 รายการ</span>
                                         </div>
@@ -9638,19 +9610,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
         }
 
 
-        // ---- แดชบอร์ดดีไซน์ใหม่: สรุปสิ่งที่ต้องดำเนินการ (ดึงค่าจากตัวเลขเดิมที่ระบบคำนวณอยู่แล้ว) ----
-        (function() {
-            function fmtToday() { try { return new Date().toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { return ''; } }
-            function sync() {
-                const pairs = [['metricLowStockCount', 'db2LowCount'], ['metricBorrowedCount', 'db2BorrowCount'], ['metricPendingPOCount', 'db2POCount']];
-                pairs.forEach(([src, dst]) => { const a = document.getElementById(src), b = document.getElementById(dst); if (a && b) { const n = parseInt(String(a.textContent).replace(/[^0-9]/g, '')) || 0; b.textContent = n.toLocaleString(); b.closest('.db2-alert').classList.toggle('zero', n === 0); } });
-                const t = document.getElementById('db2Today'); if (t) t.textContent = fmtToday();
-            }
-            document.addEventListener('DOMContentLoaded', function() {
-                sync();
-                ['metricLowStockCount', 'metricBorrowedCount', 'metricPendingPOCount'].forEach(id => { const el = document.getElementById(id); if (el) new MutationObserver(sync).observe(el, { childList: true, characterData: true, subtree: true }); });
-            });
-        })();
+        // วันที่ภาษาไทยใต้หัวแดชบอร์ด
+        document.addEventListener('DOMContentLoaded', function() { try { const t = document.getElementById('db2Today'); if (t) t.textContent = new Date().toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) {} });
 
         function openTxModal(type) {
             document.getElementById('txForm').reset(); document.getElementById('txType').value = type;
