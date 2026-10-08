@@ -2337,14 +2337,25 @@ const CAT_ICON = {
   'Power Tools':'🔌','default':'📦'
 };
 function catIcon(cat) { return CAT_ICON[cat] || CAT_ICON['default']; }
-// รูปประจำหมวด: วางไฟล์ไว้ที่ cat-icons/<ชื่อหมวด>.png (หมวด "ทั้งหมด" ใช้ cat-icons/all.png)
-// ถ้าไม่มีไฟล์ จะกลับไปใช้อีโมจิเดิมอัตโนมัติ
+// รูปประจำหมวด: ไฟล์ SVG ในโฟลเดอร์ cat-icons/ (จับคู่จากชื่อหมวด) ถ้าไม่เจอหมวดหรือโหลดไม่ได้ ใช้อีโมจิเดิม
+const CAT_SVG_RULES = [
+  [/เป่า\s*2|เป่า\s*สอง/, 'blower2'], [/เป่า/, 'blower'],
+  [/จัดเรียง/, 'sorter'], [/บรรจุ|ขวด/, 'filler'], [/พันฉลาก|ฉลาก/, 'labeler'], [/แพ็ค|เพ็ค|แพค|pack/i, 'packer'],
+  [/ปั๊ม|ปั้ม/, 'airpump'], [/ฟิตติ้ง|ฟิลลิ่ง|fitting/i, 'fitting'], [/ไฟฟ้า/, 'electric'],
+  [/กรอง/, 'filter'], [/ลูกปืน/, 'bearing'], [/วัสดุ/, 'material'], [/ไฮดรอลิค|ไฮดรอลิก|สาย/, 'hose'],
+  [/สิ้นเปลือง/, 'consumable'], [/เครื่องมือ/, 'toolbox'], [/ประแจ/, 'wrench'], [/ทั่วไป/, 'general']
+];
+function catSvgKey(cat) {
+  const c = String(cat || '');
+  for (const [re, key] of CAT_SVG_RULES) if (re.test(c)) return key;
+  return null;
+}
 function catIconHtml(cat, isAll) {
-  const file = isAll ? 'all' : String(cat);
-  const src = 'cat-icons/' + encodeURIComponent(file) + '.png';
+  const key = isAll ? 'all' : catSvgKey(cat);
   const emoji = isAll ? '🗂️' : catIcon(cat);
-  return '<span class="cat-icon"><img class="cat-img" src="' + src + '" alt="" loading="lazy" decoding="async" ' +
-    'onerror="this.parentNode.classList.add(\'noimg\');this.replaceWith(document.createTextNode(\'' + emoji + '\'))"></span>';
+  if (!key) return '<span class="cat-icon">' + emoji + '</span>';
+  return '<span class="cat-icon"><img class="cat-img" src="cat-icons/' + key + '.svg" alt="" loading="lazy" decoding="async" ' +
+    'onerror="this.replaceWith(document.createTextNode(\'' + emoji + '\'))"></span>';
 }
 
 function renderCats(mode) {
