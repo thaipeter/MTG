@@ -313,6 +313,7 @@ body{display:flex;flex-direction:column}
 }
 .cat-card:hover{border-color:var(--amber)!important;transform:translateY(-2px);background:rgba(232,160,32,0.12)!important}
 .cat-card:active{transform:scale(.96)}
+.ann-icon{border:none!important;margin-top:1.2em!important}
 .cat-icon{font-size:28px;line-height:1;display:flex;align-items:center;justify-content:center;width:100%}
 .cat-icon .cat-img{width:100%;height:76px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,.45));transition:transform .2s ease}
 .cat-card:hover .cat-img{transform:scale(1.06)}
@@ -2101,6 +2102,42 @@ function confirmLogout() {
 }
 
 /* ══ APP ══ */
+/* ══ ประกาศจากแอดมิน (ตั้งค่าที่หน้า index → ตั้งค่า → ประกาศหน้า QR) ══ */
+function _annHash(str) { let h = 0; for (let i = 0; i < str.length; i++) { h = ((h << 5) - h + str.charCodeAt(i)) | 0; } return String(h); }
+function showAnnouncement(retried) {
+  const st = (allData && allData.settings) || null;
+  if (!st) { if (!retried) setTimeout(() => showAnnouncement(true), 2000); return; }
+  if (!st.announceOn) return;
+  const title = String(st.announceTitle || '').trim(), msg = String(st.announceMsg || '').trim();
+  if (!title && !msg) return;
+  if (st.announceUntil) {
+    const end = new Date(st.announceUntil + 'T23:59:59');
+    if (!isNaN(end) && Date.now() > end.getTime()) return;
+  }
+  const key = 'qr_ann_seen_' + _annHash(title + '|' + msg);
+  if (st.announceMode !== 'always') {
+    try { if (localStorage.getItem(key)) return; } catch (e) {}
+  }
+  if (window._annShowing) return;
+  window._annShowing = true;
+  const esc2 = t => String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  Swal.fire({
+    icon: undefined,
+    iconHtml: '<i class="fa-solid fa-bullhorn" style="font-size:34px;color:#e8a020"></i>',
+    title: esc2(title || 'ประกาศ'),
+    html: '<div style="text-align:left;white-space:pre-line;line-height:1.7;font-size:15px;color:rgba(255,255,255,.88)">' + esc2(msg) + '</div>',
+    confirmButtonText: 'รับทราบ',
+    confirmButtonColor: '#e8a020',
+    background: '#1a1f2e',
+    color: '#fff',
+    allowOutsideClick: false,
+    customClass: { icon: 'ann-icon' }
+  }).then(r => {
+    window._annShowing = false;
+    if (r && r.isConfirmed) { try { localStorage.setItem(key, '1'); } catch (e) {} }
+  });
+}
+
 function initApp() {
   renderCats('withdraw');
   renderCats('borrow');
@@ -2109,6 +2146,7 @@ function initApp() {
   startStockPoll();
   checkMyPendingRetroWithdraws();
   loadMineApproval();
+  showAnnouncement();
 }
 
 /* ══ แจ้งเตือน "ตกเบิก" ที่แอดมินมอบหมายให้มายืนยันเอง (เช็คตอน login) ══ */

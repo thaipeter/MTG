@@ -4320,6 +4320,32 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                                                  <div style="font-size:.7rem;color:rgba(255,255,255,.4)" class="mt-2">เว้นว่างไว้เพื่อใช้ข้อความเริ่มต้นของระบบ</div>
                                              </div>
                                          </div>
+                                         <div class="settings-box">
+                                             <div class="d-flex justify-content-between align-items-start gap-3">
+                                                 <div><div class="settings-toggle-title"><i class="fas fa-bullhorn me-2" style="color:#fbbf24"></i>ประกาศหน้า QR</div><div class="settings-toggle-sub">แสดงป๊อปอัพข้อความให้พนักงานเห็นทันทีที่เข้าหน้า QR (ไม่ต้องใส่ HTML ขึ้นบรรทัดใหม่ได้ตามปกติ)</div></div>
+                                                 <div class="form-check form-switch mb-0 flex-shrink-0 mt-1"><input class="form-check-input" type="checkbox" id="setAnnounceOn" onchange="document.getElementById('announceBox').style.display=this.checked?'block':'none'" style="width:2.5em;height:1.3em;cursor:pointer"></div>
+                                             </div>
+                                             <div id="announceBox" style="display:none;padding-top:16px;border-top:1px solid rgba(245,158,11,.15)">
+                                                 <label class="form-label">หัวข้อประกาศ</label>
+                                                 <input type="text" class="form-control mb-3" id="setAnnounceTitle" maxlength="80" placeholder="เช่น แจ้งปิดคลังวันที่ 15">
+                                                 <label class="form-label">ข้อความ</label>
+                                                 <textarea class="form-control mb-3" id="setAnnounceMsg" rows="4" maxlength="800" placeholder="พิมพ์ข้อความที่ต้องการให้ทุกคนเห็น"></textarea>
+                                                 <div class="row g-3">
+                                                     <div class="col-12 col-md-6">
+                                                         <label class="form-label">รูปแบบการแสดง</label>
+                                                         <select class="form-select" id="setAnnounceMode">
+                                                             <option value="once">แสดงครั้งเดียวต่อเครื่อง (แสดงอีกเมื่อแก้ข้อความ)</option>
+                                                             <option value="always">แสดงทุกครั้งที่เข้าหน้า QR</option>
+                                                         </select>
+                                                     </div>
+                                                     <div class="col-12 col-md-6">
+                                                         <label class="form-label">หยุดแสดงหลังวันที่ (ไม่บังคับ)</label>
+                                                         <input type="date" class="form-control" id="setAnnounceUntil">
+                                                     </div>
+                                                 </div>
+                                                 <div style="font-size:.7rem;color:rgba(255,255,255,.4)" class="mt-2">กด "บันทึกการตั้งค่า" ด้านล่างเพื่อใช้งานจริง</div>
+                                             </div>
+                                         </div>
                                      </div>
                                  </div>
 
@@ -6558,6 +6584,14 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             if(document.getElementById('setAutoRefresh')) { document.getElementById('setAutoRefresh').checked = !!s.autoRefresh; toggleAutoRefresh(!!s.autoRefresh); }
             if(document.getElementById('setNotifyFallback')) { document.getElementById('setNotifyFallback').checked = !!s.notifyFallbackSwitch; toggleNotifyFallbackMsgBox(!!s.notifyFallbackSwitch); }
             if(document.getElementById('setNotifyFallbackMsg')) document.getElementById('setNotifyFallbackMsg').value = s.notifyFallbackMsg || '';
+            if(document.getElementById('setAnnounceOn')) {
+                document.getElementById('setAnnounceOn').checked = !!s.announceOn;
+                document.getElementById('announceBox').style.display = s.announceOn ? 'block' : 'none';
+                document.getElementById('setAnnounceTitle').value = s.announceTitle || '';
+                document.getElementById('setAnnounceMsg').value = s.announceMsg || '';
+                document.getElementById('setAnnounceMode').value = s.announceMode || 'once';
+                document.getElementById('setAnnounceUntil').value = s.announceUntil || '';
+            }
             if(document.getElementById('setRefreshInterval')) document.getElementById('setRefreshInterval').value = s.refreshInterval || 3;
             if(document.getElementById('setRowsPerPage')) document.getElementById('setRowsPerPage').value = s.rowsPerPage || 100;
             if(document.getElementById('setDateFormat')) document.getElementById('setDateFormat').value = s.dateFormat || 'TH';
@@ -6848,6 +6882,11 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 autoRefresh: document.getElementById('setAutoRefresh') ? document.getElementById('setAutoRefresh').checked : false, 
                 notifyFallbackSwitch: document.getElementById('setNotifyFallback') ? document.getElementById('setNotifyFallback').checked : false, 
                 notifyFallbackMsg: document.getElementById('setNotifyFallbackMsg') ? document.getElementById('setNotifyFallbackMsg').value.trim() : '', 
+                announceOn: document.getElementById('setAnnounceOn') ? document.getElementById('setAnnounceOn').checked : false,
+                announceTitle: document.getElementById('setAnnounceTitle') ? document.getElementById('setAnnounceTitle').value.trim() : '',
+                announceMsg: document.getElementById('setAnnounceMsg') ? document.getElementById('setAnnounceMsg').value.trim() : '',
+                announceMode: document.getElementById('setAnnounceMode') ? document.getElementById('setAnnounceMode').value : 'once',
+                announceUntil: document.getElementById('setAnnounceUntil') ? document.getElementById('setAnnounceUntil').value : '',
                 refreshInterval: document.getElementById('setRefreshInterval') ? parseInt(document.getElementById('setRefreshInterval').value) : 3,
                 rowsPerPage: document.getElementById('setRowsPerPage').value, 
                 dateFormat: document.getElementById('setDateFormat').value, 
