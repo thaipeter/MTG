@@ -139,6 +139,11 @@
 #dashboard #dashUnifiedInventoryTable tbody tr:hover{background:rgba(255,255,255,.04)}
 #dashboard #dashUnifiedInventoryTable tbody td{padding:12px 14px;vertical-align:middle}
 @media(max-width:768px){.db2-title{font-size:1.5rem}.db2-actions{width:100%}.db2-btn{flex:1;justify-content:center}.db2-alerts{grid-template-columns:1fr}.db2-alert em{display:none}#dashboard .stat-card .stat-value{font-size:1.7rem!important}}
+.db2-lowchip{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;border-radius:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fecaca;font-size:.9rem}
+.db2-lowchip>i{color:#f87171}.db2-lowchip b{color:#fff;margin-left:6px}
+.db2-lowchip a{color:#fbbf24;cursor:pointer;text-decoration:underline}
+.db2-lowchip button{margin-left:auto;background:transparent;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:8px;padding:4px 12px;font-size:.82rem}
+.db2-lowchip button:hover{background:rgba(255,255,255,.1)}
 </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f0f0f">
@@ -2439,9 +2444,9 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     </div>
                     <!-- ต้องดำเนินการ: สิ่งที่ต้องเห็นก่อนอย่างอื่น -->
                     <div class="db2-alerts" id="db2Alerts">
-                        <a class="db2-alert danger" onclick="goTo('items')" role="button" tabindex="0"><i class="fas fa-exclamation-triangle"></i><div><b id="db2LowCount">0</b><span>อะไหล่ต่ำกว่าเกณฑ์ — ต้องเติมสต็อก</span></div><em>ดูรายการ <i class="fas fa-chevron-right"></i></em></a>
+                        <a class="db2-alert danger" onclick="showLowStock()" role="button" tabindex="0"><i class="fas fa-exclamation-triangle"></i><div><b id="db2LowCount">0</b><span>อะไหล่ต่ำกว่าเกณฑ์ — ต้องเติมสต็อก</span></div><em>ดูรายการ <i class="fas fa-chevron-right"></i></em></a>
                         <a class="db2-alert warn" onclick="goTo('borrowedItems')" role="button" tabindex="0"><i class="fas fa-toolbox"></i><div><b id="db2BorrowCount">0</b><span>เครื่องมือถูกยืมออก — รอคืน</span></div><em>ดูรายการ <i class="fas fa-chevron-right"></i></em></a>
-                        <a class="db2-alert info" onclick="goTo('monthlyOrders')" role="button" tabindex="0"><i class="fas fa-file-invoice"></i><div><b id="db2POCount">0</b><span>ใบสั่งซื้อ PO ค้างส่ง</span></div><em>ดูรายการ <i class="fas fa-chevron-right"></i></em></a>
+                        <a class="db2-alert info" onclick="goTo('monthlyOrders')" role="button" tabindex="0"><i class="fas fa-file-invoice"></i><div><b id="db2POCount">0</b><span>ใบสั่งซื้อ PO ค้างรับ</span></div><em>ดูรายการ <i class="fas fa-chevron-right"></i></em></a>
                     </div>
                     <!-- Statistics Cards with Sparklines -->
                     <div class="row g-2 mb-4">
@@ -5752,6 +5757,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
 
         function goTo(sectionId) {
             try {
+                if (window.__lowStockOnly) { window.__lowStockOnly = false; try { ['itemsTable', 'toolsTable'].forEach(t => filterTable(t)); updateLowStockChip(); } catch (e) {} }
                 try { sessionStorage.setItem('last_section', sectionId); } catch(e) {}
                 const ADMIN_ONLY_SECTIONS = ['settings', 'archive'];
                 if (ADMIN_ONLY_SECTIONS.indexOf(sectionId) !== -1 && currentUserProfile.role !== 'admin') {
@@ -7679,7 +7685,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 const _todayDateStr = getFormattedDate().split(' ')[0];
                 const _dispatchToday = data.history.filter(h => h.time && h.time.includes(_todayDateStr) && String(h.action).trim().toLowerCase().startsWith('เบิก')).length;
                 const _receiveToday = data.history.filter(h => h.time && h.time.includes(_todayDateStr) && (String(h.action).trim().toLowerCase() === 'รับเข้า' || String(h.action).trim().toLowerCase() === 'new item')).length;
-                animateValue("count-items", 0, data.items.length, 500); animateValue("count-tools", 0, data.tools.length, 500); animateValue("count-low", 0, _dispatchToday, 500); animateValue("count-logs", 0, _receiveToday, 500); renderMonthlyTxCards(data);
+                animateValue("count-items", 0, data.items.length, 500); animateValue("count-tools", 0, countPendingPOCodes(data.pendingPOs), 500); animateValue("count-low", 0, _dispatchToday, 500); animateValue("count-logs", 0, _receiveToday, 500); renderMonthlyTxCards(data);
 
                 // ★ เพิ่มใหม่ — มูลค่าคลังรวม (ราคาทุน) = ผลรวม (คงเหลือ × ราคาทุนต่อหน่วย) ของอะไหล่ + เครื่องมือทั้งหมด
                 const _stockValueEl = document.getElementById('count-stock-value');
@@ -8021,6 +8027,38 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             } catch(e) { console.error(e); }
         }
 
+        // จำนวนใบ PO ที่ยังค้างรับจริง: นับตามเลข PO (ไม่ซ้ำ) และไม่รวมสถานะ "ได้รับแล้ว"/"สำเร็จ"
+        function countPendingPOCodes(pos) {
+            const done = ['ได้รับแล้ว', 'สำเร็จ', 'Completed', 'ยกเลิก'];
+            return new Set((pos || []).filter(p => !done.includes(String(p.status || '').trim())).map(p => p.poCode)).size;
+        }
+
+        // กดจากแดชบอร์ด "อะไหล่ต่ำกว่าเกณฑ์" → ไปหน้าคลังและกรองเฉพาะรายการที่ต่ำกว่า Min
+        function showLowStock() {
+            goTo('items');
+            window.__lowStockOnly = true;
+            ['itemsTable', 'toolsTable'].forEach(t => filterTable(t));
+            updateLowStockChip();
+        }
+        function clearLowStock() {
+            window.__lowStockOnly = false;
+            ['itemsTable', 'toolsTable'].forEach(t => filterTable(t));
+            updateLowStockChip();
+        }
+        function updateLowStockChip() {
+            const isLow = x => parseFloat(x.stock) <= parseFloat(x.min);
+            const nItems = (allData.items || []).filter(isLow).length, nTools = (allData.tools || []).filter(isLow).length;
+            [['items', 'อะไหล่', nItems, 'tools', 'เครื่องมือ', nTools], ['tools', 'เครื่องมือ', nTools, 'items', 'อะไหล่', nItems]].forEach(([sec, label, n, other, otherLabel, nOther]) => {
+                const root = document.getElementById(sec); if (!root) return;
+                let chip = root.querySelector(':scope > .db2-lowchip');
+                if (!window.__lowStockOnly) { if (chip) chip.remove(); return; }
+                if (!chip) { chip = document.createElement('div'); chip.className = 'db2-lowchip'; root.insertBefore(chip, root.firstChild); }
+                chip.innerHTML = `<i class="fas fa-exclamation-triangle"></i><span>แสดงเฉพาะ<b>${label}ที่ต่ำกว่าเกณฑ์ ${n} รายการ</b></span>` +
+                    (nOther ? `<a onclick="goTo('${other}'); window.__lowStockOnly = true; filterTable('${other}Table'); updateLowStockChip();">ดู${otherLabel}ที่ต่ำกว่าเกณฑ์อีก ${nOther} รายการ</a>` : '') +
+                    `<button type="button" onclick="clearLowStock()"><i class="fas fa-times me-1"></i>ล้างตัวกรอง</button>`;
+            });
+        }
+
         function renderMockupDashboard(data) {
             try {
                 // 1. Calculate Real Dynamic Key Metrics
@@ -8033,8 +8071,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 const borrowedTools = (data.activeBorrows || []).length;
                 const toolReadyPct = totalTools > 0 ? Math.max(0, Math.round(((totalTools - borrowedTools) / totalTools) * 100)) : 100;
 
-                const totalPOs = (data.pendingPOs || []).length;
-                const pendingPOsCount = (data.pendingPOs || []).filter(p => p.status !== 'สำเร็จ' && p.status !== 'Completed').length;
+                const totalPOs = new Set((data.pendingPOs || []).map(p => p.poCode)).size;
+                const pendingPOsCount = countPendingPOCodes(data.pendingPOs);   // นับเป็นใบ PO ที่ยังค้างจริง (ไม่รวม "ได้รับแล้ว")
                 const poClearancePct = totalPOs > 0 ? Math.round(((totalPOs - pendingPOsCount) / totalPOs) * 100) : 100;
 
                 // Update Rings & Percentage Text
@@ -9065,7 +9103,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 const baseData = isItems ? allData.items : allData.tools; const type = isItems ? 'item' : 'tool';
                 const filteredData = baseData.filter(item => {
                     const catText = String(getItemCategory(item)).toLowerCase().trim();
-                    if (text !== '' && !_matchesSearchQuery(`${item.code || ''} ${item.name || ''}`, text)) return false; if (category !== '' && !catText.includes(category)) return false; return true;
+                    if (text !== '' && !_matchesSearchQuery(`${item.code || ''} ${item.name || ''}`, text)) return false; if (category !== '' && !catText.includes(category)) return false; if (window.__lowStockOnly && !(parseFloat(item.stock) <= parseFloat(item.min))) return false; return true;
                 });
                 renderTable(tableId, filteredData, type);
                 // ★ เพิ่ม: รีเฟรชการ์ดประวัติรับเข้า/เบิกออกของหน้าคลังอะไหล่ให้ตรงกับข้อมูลล่าสุดเสมอ
