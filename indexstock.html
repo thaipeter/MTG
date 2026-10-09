@@ -5209,7 +5209,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
         // 🚨 วาง URL ของ Web App หลังบ้าน (Google Apps Script) ที่นี่
         // ★ แก้บั๊ก: เดิมค่านี้ว่างเปล่า ทำให้ตอน deploy หน้านี้แยกบน GitHub Pages (นอก Apps Script)
         // ทุกการเรียก backend ผ่าน fetch ล้มเหลวทันทีด้วย error "ยังไม่ได้เชื่อมต่อ Backend"
-        // ใส่ URL เดียวกับที่ใช้ในหน้า QR (qr-supabase-test.html) เพราะเป็น backend เดียวกัน
+        // ใส่ URL เดียวกับที่ใช้ในหน้า QR (qrstock.html) เพราะเป็น backend เดียวกัน
         const GAS_URL = "https://qgcovpqrrnbcxddpfphh.supabase.co/functions/v1/api";
         const isGAS = (typeof google !== 'undefined' && google.script && google.script.run && typeof window !== 'undefined' && window.location && window.location.protocol !== 'file:');
         window.isGAS = isGAS;
@@ -5582,7 +5582,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
         // [ลบ goTo() ตัวซ้ำ — ใช้ตัวหลักที่บรรทัดถัดไปแทน (มี logic ครบกว่า)]
 
         function openTransactionPage() {
-            window.open('./qr-supabase-test.html', '_blank');
+            window.open('./qrstock.html', '_blank');
         }
 
         function copyTransactionUrl() {
@@ -12033,7 +12033,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
 
         function printAppScannerQR() {
             // ลิงก์ล่าสุดที่คุณให้มา
-            const appUrl = new URL('./qr-supabase-test.html', window.location.href).href;
+            const appUrl = new URL('./qrstock.html', window.location.href).href;
             
             // เปิดหน้าต่างใหม่ขึ้นมารอไว้ก่อนเลย ป้องกัน Pop-up Blocker
             const printWindow = window.open('', '_blank');
