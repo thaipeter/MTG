@@ -2528,7 +2528,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             </div>
                         </div>
                         <div class="col-6 col-md-3 col-sm-6">
-                            <div class="stat-card border-top-0 border-end-0 border-bottom-0 border-start border-danger border-4">
+                            <div class="stat-card border-top-0 border-end-0 border-bottom-0 border-start border-danger border-4" style="cursor:pointer;" onclick="openMonthlyTxModal('out', 'today')" title="คลิกเพื่อดูรายการเบิกจ่ายทั้งหมดของวันนี้" role="button" tabindex="0">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <div class="stat-title" style="color:var(--text-muted); font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">การเบิกจ่ายวันนี้</div>
@@ -2541,7 +2541,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             </div>
                         </div>
                         <div class="col-6 col-md-3 col-sm-6">
-                            <div class="stat-card border-top-0 border-end-0 border-bottom-0 border-start border-success border-4">
+                            <div class="stat-card border-top-0 border-end-0 border-bottom-0 border-start border-success border-4" style="cursor:pointer;" onclick="openMonthlyTxModal('in', 'today')" title="คลิกเพื่อดูรายการรับเข้าทั้งหมดของวันนี้" role="button" tabindex="0">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <div class="stat-title" style="color:var(--text-muted); font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">การรับเข้าสินค้า</div>
@@ -7864,7 +7864,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
         }
 
         /* ★ เพิ่มใหม่ — สรุปรับเข้า/เบิกออกเดือนปัจจุบัน (นับจาก Logs ของเดือนนี้ — เดือนที่ปิดไปแล้วอยู่ใน Archive จึงไม่นับ) */
-        window._monthTx = { in: [], out: [], label: '', view: 'all', type: 'in' };
+        window._monthTx = { in: [], out: [], inToday: [], outToday: [], label: '', todayLabel: '', period: 'month', view: 'all', type: 'in' };
         function _histYM(timeStr) {
             const p = String(timeStr || '').trim().split(' ')[0].split('/');
             if (p.length < 3) return null;
@@ -7888,6 +7888,15 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 });
                 const label = '(' + MN[cm] + ' ' + String(cy + 543).slice(-2) + ')';
                 window._monthTx.in = inList; window._monthTx.out = outList; window._monthTx.label = label;
+                const _todayStr = getFormattedDate().split(' ')[0];
+                const inToday = [], outToday = [];
+                (data.history || []).forEach(function (h) {
+                    if (!h.time || !h.time.includes(_todayStr)) return;
+                    const act = String(h.action || '').trim().toLowerCase();
+                    if (act === 'รับเข้า' || act === 'new item') inToday.push(h);
+                    else if (act.startsWith('เบิก')) outToday.push(h);
+                });
+                window._monthTx.inToday = inToday; window._monthTx.outToday = outToday; window._monthTx.todayLabel = '(' + _todayStr + ')';
                 const sum = function (l) { return l.reduce(function (s, h) { return s + _txQty(h); }, 0); };
                 const set = function (id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; };
                 set('count-month-in', formatNumber(inList.length) + ' <span style="font-size:1rem">รายการ</span>');
@@ -7900,8 +7909,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 if (md && md.classList.contains('show')) renderMonthlyTxTable();
             } catch (e) { console.warn('renderMonthlyTxCards error:', e); }
         }
-        function openMonthlyTxModal(type) {
-            window._monthTx.type = type; window._monthTx.view = 'all';
+        function openMonthlyTxModal(type, period) {
+            window._monthTx.type = type; window._monthTx.view = 'all'; window._monthTx.period = (period === 'today') ? 'today' : 'month';
             const s = document.getElementById('monthlyTxSearch'); if (s) s.value = '';
             setMonthlyTxView('all', true);
             renderMonthlyTxTable();
@@ -7916,7 +7925,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
         }
         function renderMonthlyTxTable() {
             const st = window._monthTx; const isIn = st.type === 'in';
-            const list = isIn ? st.in : st.out;
+            const isToday = st.period === 'today';
+            const list = isIn ? (isToday ? st.inToday : st.in) : (isToday ? st.outToday : st.out);
             const q = (document.getElementById('monthlyTxSearch')?.value || '').trim().toLowerCase();
             const rows = list.filter(function (h) {
                 if (!q) return true;
@@ -7924,7 +7934,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             });
             const totalQty = rows.reduce(function (s, h) { return s + _txQty(h); }, 0);
             const t = document.getElementById('monthlyTxTitle');
-            if (t) t.innerHTML = (isIn ? '<i class="fas fa-box-open text-success me-2"></i>รายการรับเข้า' : '<i class="fas fa-dolly text-danger me-2"></i>รายการเบิกออก') + ' เดือนนี้ ' + escapeHtml(st.label);
+            if (t) t.innerHTML = (isIn ? '<i class="fas fa-box-open text-success me-2"></i>รายการรับเข้า' : '<i class="fas fa-dolly text-danger me-2"></i>รายการเบิกออก') + (isToday ? ' วันนี้ ' + escapeHtml(st.todayLabel) : ' เดือนนี้ ' + escapeHtml(st.label));
             const sm = document.getElementById('monthlyTxSummary');
             if (sm) sm.textContent = formatNumber(rows.length) + ' รายการ · รวม ' + formatNumber(totalQty) + ' ชิ้น' + (q ? ' (กรองจากทั้งหมด ' + formatNumber(list.length) + ' รายการ)' : '');
             const head = document.getElementById('monthlyTxHead'), body = document.getElementById('monthlyTxBody');
