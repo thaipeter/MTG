@@ -696,6 +696,7 @@ body{display:flex;flex-direction:column}
 .st-chip.on{background:var(--amber);border-color:var(--amber);color:#1b1200;font-weight:700}
 .st-chip.red{border-color:rgba(239,83,80,.45);color:var(--red)}
 .st-chip.red.on{background:var(--red);color:#fff}
+.st-tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;line-height:1.5;vertical-align:1px}
 .st-sec{font-size:12px;font-weight:700;color:var(--text2);padding:10px 2px 6px}
 .st-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:11px 13px;margin-bottom:8px;cursor:pointer}
 .st-row.red{border-color:rgba(239,83,80,.45)}
@@ -2601,7 +2602,7 @@ function switchTab(tab) {
   });
   const active = document.getElementById('content' + cap(tab));
   if (active) { active.style.display = 'flex'; active.classList.add('active'); }
-  const subs = { withdraw: 'เบิกของออก', borrow: 'ยืม / คืนเครื่องมือ', receive: 'รับสินค้าเข้าคลัง', mine: 'ประวัติและสถานะของฉัน', newitem: 'ขึ้นทะเบียนรายการใหม่', stocktake: 'นับสต็อกประจำเดือน' };
+  const subs = { withdraw: 'เบิกของออก', borrow: 'ยืม / คืนเครื่องมือ', receive: 'รับสินค้าเข้าคลัง', mine: 'ประวัติและสถานะของฉัน', newitem: 'ขึ้นทะเบียนรายการใหม่', stocktake: 'นับสต็อกรายสัปดาห์' };
   document.getElementById('topSub').textContent = subs[tab] || '';
   if (tab === 'mine') loadMineData();
   if (tab === 'newitem') niInit();
@@ -2679,10 +2680,16 @@ function stRender() {
   btn.innerHTML = S.remain > 0 ? '<i class="fas fa-play"></i> นับรายการถัดไป' : '<i class="fas fa-check"></i> ดูสรุป';
 }
 
+function stCatTag(cat) {   // ป้ายหมวดเล็กๆ สีคงที่ตามชื่อหมวด
+  cat = String(cat || '').trim(); if (!cat) return '';
+  let h = 0; for (let k = 0; k < cat.length; k++) h = (h * 31 + cat.charCodeAt(k)) % 360;
+  return '<span class="st-tag" style="background:hsla(' + h + ',60%,50%,.16);color:hsl(' + h + ',75%,72%)">' + esc(cat) + '</span> ';
+}
+
 function stRow(i) {
   const cls = i.status === 'recount' ? ' red' : (i.status === 'counted' ? ' done' : '');
   const icon = i.status === 'recount' ? 'fa-rotate' : (i.status === 'counted' ? 'fa-check' : 'fa-clipboard-list');
-  let sub = esc(i.code) + (i.pickReason ? ' · ' + esc(i.pickReason) : '');
+  let sub = stCatTag(i.category) + esc(i.code) + (i.pickReason ? ' · ' + esc(i.pickReason) : '');
   let right = '<i class="fas fa-chevron-right" style="color:var(--text3)"></i>';
   if (i.status === 'counted') {
     right = '<div style="text-align:right"><div style="font-size:18px;font-weight:800;color:#fff">' + i.countedQty + '</div>'
