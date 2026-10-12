@@ -701,6 +701,9 @@ body{display:flex;flex-direction:column}
 .st-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:11px 13px;margin-bottom:8px;cursor:pointer}
 .st-row.red{border-color:rgba(239,83,80,.45)}
 .st-row.done{opacity:.65}
+.st-img{width:48px;height:48px;border-radius:10px;overflow:hidden;background:var(--surface2);border:1px solid var(--border2);flex-shrink:0;cursor:zoom-in}
+.st-img img{width:100%;height:100%;object-fit:cover;display:block}
+.st-img-lg{width:84px;height:84px;border-radius:12px}
 .st-ic{width:36px;height:36px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;color:var(--text2);flex-shrink:0;font-size:14px}
 .st-row.red .st-ic{background:var(--red-dim);color:var(--red)}
 .st-row.done .st-ic{background:var(--green-dim);color:var(--green)}
@@ -1147,10 +1150,13 @@ body{display:flex;flex-direction:column}
       </div>
     </div>
     <div style="padding:6px 16px 0;flex-shrink:0">
-      <div class="st-card">
-        <div style="font-size:12px;color:var(--amber);font-weight:700" id="stItemMeta"></div>
-        <div style="font-size:21px;font-weight:800;color:#fff;line-height:1.3;margin:2px 0" id="stItemName"></div>
-        <div style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px" id="stItemNote"></div>
+      <div class="st-card" style="display:flex;gap:12px;align-items:center">
+        <div id="stItemImg" class="st-img st-img-lg" style="display:none" onclick="stItemGallery()"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;color:var(--amber);font-weight:700" id="stItemMeta"></div>
+          <div style="font-size:21px;font-weight:800;color:#fff;line-height:1.3;margin:2px 0" id="stItemName"></div>
+          <div style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px" id="stItemNote"></div>
+        </div>
       </div>
     </div>
     <div style="padding:14px 16px 4px;text-align:center;flex-shrink:0">
@@ -2686,6 +2692,21 @@ function stCatTag(cat) {   // ป้ายหมวดเล็กๆ สีค�
   return '<span class="st-tag" style="background:hsla(' + h + ',60%,50%,.16);color:hsl(' + h + ',75%,72%)">' + esc(cat) + '</span> ';
 }
 
+function stImg(code) {   // รูปสินค้าจากข้อมูลคลัง (ถ้ามี)
+  const p = getAllItems().find(x => x.code === code);
+  return p ? getProxyImgUrl(p.imageUrl) : null;
+}
+function stThumb(code, icon) {
+  const u = stImg(code);
+  if (!u) return '<div class="st-ic"><i class="fas ' + icon + '"></i></div>';
+  return '<div class="st-img" data-icon="' + icon + '" onclick="event.stopPropagation();showItemGallery(this.parentNode.dataset.code, \'\')">'
+    + '<img src="' + u + '" alt="" loading="lazy" onerror="stImgFail(this)"></div>';
+}
+function stImgFail(img) {   // รูปโหลดไม่ได้ → กลับไปใช้ไอคอนเดิม
+  const d = img.parentNode; d.className = 'st-ic'; d.removeAttribute('onclick');
+  d.innerHTML = '<i class="fas ' + (d.dataset.icon || 'fa-clipboard-list') + '"></i>';
+}
+
 function stRow(i) {
   const cls = i.status === 'recount' ? ' red' : (i.status === 'counted' ? ' done' : '');
   const icon = i.status === 'recount' ? 'fa-rotate' : (i.status === 'counted' ? 'fa-check' : 'fa-clipboard-list');
@@ -2696,7 +2717,7 @@ function stRow(i) {
       + '<div style="font-size:11px;color:' + (i.diff === 0 ? 'var(--green)' : 'var(--red)') + '">' + (i.diff === 0 ? 'ตรง' : 'ต่าง ' + (i.diff > 0 ? '+' : '') + i.diff) + '</div></div>';
   } else if (i.status === 'recount') { right = '<span style="font-size:13px;color:var(--red);font-weight:600">นับซ้ำ</span>'; }
   return '<div class="st-row' + cls + '" data-code="' + esc(i.code) + '" onclick="stOpen(this.dataset.code)">'
-    + '<div class="st-ic"><i class="fas ' + icon + '"></i></div>'
+    + stThumb(i.code, icon)
     + '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(i.name) + '</div>'
     + '<div style="font-size:12px;color:var(--text2)">' + sub + '</div></div>' + right + '</div>';
 }
@@ -2707,6 +2728,8 @@ function stNext() {
   const it = stState.items.find(i => i.status === 'recount') || stState.items.find(i => i.status === 'pending' && !i.extra);
   if (it) stOpen(it.code);
 }
+
+function stItemGallery() { if (stState.cur) showItemGallery(stState.cur.code, stState.cur.name); }
 
 function stScan() { stState.viaScan = true; openScanner('stocktake'); }
 
@@ -2729,6 +2752,8 @@ function stCountUpdate() {
   document.getElementById('stPosBar').style.width = (S.total ? Math.round(S.done / S.total * 100) : 0) + '%';
   document.getElementById('stItemMeta').textContent = it.code + (it.category ? ' · ' + it.category : '');
   document.getElementById('stItemName').textContent = it.name;
+  const iu = stImg(it.code), ie = document.getElementById('stItemImg');
+  if (iu) { ie.style.display = 'block'; ie.innerHTML = '<img src="' + iu + '" alt="" onerror="this.parentNode.style.display=\'none\'">'; } else { ie.style.display = 'none'; ie.innerHTML = ''; }
   const note = stState.hideSystem
     ? '<i class="fas fa-eye-slash"></i><span>ยอดในระบบถูกซ่อนไว้ ให้นับของจริงที่เห็น</span>'
     : '<i class="fas fa-box"></i><span>ในระบบมี ' + (it.systemQty == null ? '-' : it.systemQty) + ' ' + esc(it.unit) + '</span>';
