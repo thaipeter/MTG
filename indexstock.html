@@ -4005,8 +4005,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                                     <option value="รอเซ็น">รอใบเซ็น (ยังไม่แนบไฟล์)</option>
                                     <option value="ค้างคืน">ยืมอยู่ (ยังไม่คืน)</option>
                                     <option value="เกินกำหนด">เกินกำหนดคืน</option>
-                                    <option value="เซ็นแล้ว">เซ็นแล้ว</option>
-                                    <option value="คืนแล้ว">คืนแล้ว</option>
+                                    <option value="เซ็นแล้ว">เซ็นแล้ว (ใบยืม)</option>
+                                    <option value="คืนแล้ว">รับคืนแล้ว</option>
                                     <option value="ยกเลิก">ยกเลิก</option>
                                 </select>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="loadReplacementHistory()" title="รีเฟรช"><i class="fas fa-rotate"></i></button>
@@ -13630,11 +13630,13 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             const waitingSigned = rplHistoryCache.filter(s => s.status === 'ออกใบแล้ว').length;
             const borrowing = rplHistoryCache.filter(s => s.type === 'ยืม' && (s.status === 'ออกใบแล้ว' || s.status === 'เซ็นแล้ว')).length;
             const overdue = rplHistoryCache.filter(rplIsOverdue).length;
+            const returnedCount = rplHistoryCache.filter(s => s.status === 'คืนแล้ว').length;
             const stats = document.getElementById('rplHistStats');
             if (stats) stats.innerHTML =
                 `<span class="badge bg-warning text-dark">รอใบเซ็น ${waitingSigned}</span>` +
                 `<span class="badge bg-primary">ยืมอยู่ ${borrowing}</span>` +
                 `<span class="badge ${overdue ? 'bg-danger' : 'bg-secondary'}">เกินกำหนดคืน ${overdue}</span>` +
+                `<span class="badge bg-success">รับคืนแล้ว ${returnedCount}</span>` +
                 `<span class="badge bg-light text-dark border">ทั้งหมด ${rplHistoryCache.length}</span>`;
 
             const rows = rplHistoryCache.filter(s => {
@@ -13656,21 +13658,23 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
 
             const badge = (s) => {
                 if (rplIsOverdue(s)) return '<span class="badge bg-danger">เกินกำหนดคืน</span>';
-                const map = { 'ออกใบแล้ว': 'bg-warning text-dark', 'เซ็นแล้ว': 'bg-success', 'คืนแล้ว': 'bg-secondary', 'ยกเลิก': 'bg-dark' };
-                return `<span class="badge ${map[s.status] || 'bg-light text-dark'}">${escapeHtml(s.status)}</span>`;
+                const map = { 'ออกใบแล้ว': 'bg-warning text-dark', 'เซ็นแล้ว': 'bg-info text-dark', 'คืนแล้ว': 'bg-success', 'ยกเลิก': 'bg-dark' };
+                const label = s.status === 'คืนแล้ว' ? 'รับคืนแล้ว' : s.status;
+                return `<span class="badge ${map[s.status] || 'bg-light text-dark'}">${s.status === 'คืนแล้ว' ? '<i class="fas fa-check me-1"></i>' : ''}${escapeHtml(label)}</span>`;
             };
 
             body.innerHTML = rows.map(s => {
                 const itemsHtml = (s.items || []).map(i => `${escapeHtml(i.code)} <span class="text-muted">×${formatNumber(i.qty)}</span>`).join('<br>');
                 const who = escapeHtml(s.person) + (s.company ? `<br><span class="small text-muted">${escapeHtml(s.company)}</span>` : '');
                 const closed = (s.status === 'ยกเลิก');
-                const fileHtml = s.signedFileUrl
-                    ? `<a href="${rplAttr(s.signedFileUrl)}" target="_blank" rel="noopener" class="small"><i class="fas fa-paperclip me-1"></i>เปิดไฟล์</a><div class="small text-muted">${escapeHtml(s.signedAt || '')}</div>`
-                    : '<span class="small text-muted">ยังไม่แนบ</span>';
+                const fileParts = [];
+                if (s.signedFileUrl) fileParts.push(`<div><a href="${rplAttr(s.signedFileUrl)}" target="_blank" rel="noopener" class="small"><i class="fas fa-paperclip me-1"></i>ใบ${s.type === 'ยืม' ? 'ยืม' : ''}ที่เซ็น</a><div class="small text-muted">${escapeHtml(s.signedAt || '')}</div></div>`);
+                if (s.returnedFileUrl) fileParts.push(`<div class="mt-1"><a href="${rplAttr(s.returnedFileUrl)}" target="_blank" rel="noopener" class="small text-success"><i class="fas fa-paperclip me-1"></i>ใบรับคืน</a><div class="small text-muted">${escapeHtml(s.returnedAt || '')}</div></div>`);
+                const fileHtml = fileParts.length ? fileParts.join('') : '<span class="small text-muted">ยังไม่แนบ</span>';
                 const dn = rplAttr(s.docNo).replace(/'/g, '&#39;');
                 const btns = [
                     `<button class="btn btn-sm btn-outline-primary" title="พิมพ์ซ้ำ" onclick="reprintReplacementSlip('${dn}')"><i class="fas fa-print"></i></button>`,
-                    closed ? '' : `<button class="btn btn-sm btn-outline-success" title="แนบไฟล์ใบที่เซ็นแล้ว (ถ่ายรูป/สแกน)" onclick="pickReplacementSignedFile('${dn}')"><i class="fas fa-upload"></i></button>`,
+                    closed ? '' : `<button class="btn btn-sm btn-outline-success" title="แนบไฟล์ใบที่เซ็นแล้ว (ใบยืม/ใบรับคืน — ถ่ายรูป/สแกน)" onclick="pickReplacementSignedFile('${dn}')"><i class="fas fa-upload"></i></button>`,
                     (!closed && s.type === 'ยืม' && s.status !== 'คืนแล้ว') ? `<button class="btn btn-sm btn-outline-secondary" title="รับคืนแล้ว" onclick="setReplacementStatus('${dn}','คืนแล้ว')"><i class="fas fa-rotate-left"></i></button>` : '',
                     closed ? '' : `<button class="btn btn-sm btn-outline-danger" title="ยกเลิกใบนี้" onclick="setReplacementStatus('${dn}','ยกเลิก')"><i class="fas fa-ban"></i></button>`
                 ].join(' ');
@@ -13705,11 +13709,24 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
         }
 
         function pickReplacementSignedFile(docNo) {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*,application/pdf';
-            input.onchange = () => { if (input.files && input.files[0]) uploadReplacementSignedFile(docNo, input.files[0]); };
-            input.click();
+            const slip = rplHistoryCache.find(x => x.docNo === docNo);
+            const pick = (kind) => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*,application/pdf';
+                input.onchange = () => { if (input.files && input.files[0]) uploadReplacementSignedFile(docNo, input.files[0], kind); };
+                input.click();
+            };
+            if (!slip || slip.type !== 'ยืม') { pick('signed'); return; }   // ใบแทนที่ไม่ต้องคืน มีแค่ใบที่เซ็นอย่างเดียว
+            Swal.fire({
+                title: 'แนบไฟล์อะไร?', text: docNo, icon: 'question',
+                showDenyButton: true, showCancelButton: true,
+                confirmButtonText: 'ใบยืมที่เซ็นแล้ว', denyButtonText: 'ใบรับคืนที่เซ็นแล้ว', cancelButtonText: 'ปิด',
+                denyButtonColor: '#198754'
+            }).then(r => {
+                if (r.isConfirmed) pick('signed');
+                else if (r.isDenied) pick('return');
+            });
         }
 
         function rplFileToBase64(file) {
@@ -13743,14 +13760,16 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             });
         }
 
-        async function uploadReplacementSignedFile(docNo, file) {
+        async function uploadReplacementSignedFile(docNo, file, kind) {
             try {
                 Swal.fire({ title: 'กำลังอัปโหลด...', text: docNo, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 const f = await rplFileToBase64(file);
-                callGAS('webUploadReplacementSignedCopy', [docNo, f.data, f.mime, file.name, rplCurrentUserName()],
+                callGAS('webUploadReplacementSignedCopy', [docNo, f.data, f.mime, file.name, rplCurrentUserName(), kind === 'return' ? 'return' : 'signed'],
                     (res) => {
-                        Swal.fire({ icon: 'success', title: 'แนบใบที่เซ็นแล้วเรียบร้อย', timer: 1600, showConfirmButton: false });
-                        writeAudit('ใบแทน', `แนบใบที่เซ็นแล้ว [${docNo}]`);
+                        const isRet = kind === 'return';
+                        if (isRet && !(res && res.kind === 'return')) Swal.fire({ icon: 'warning', title: 'แนบไฟล์แล้ว แต่ระบบหลังบ้านยังเป็นเวอร์ชันเก่า', text: 'ยังไม่ได้เปลี่ยนสถานะเป็นรับคืนแล้ว กรุณาอัปเดตหลังบ้านก่อน' });
+                        else Swal.fire({ icon: 'success', title: isRet ? 'แนบใบรับคืนแล้ว — สถานะ: รับคืนแล้ว' : 'แนบใบที่เซ็นแล้วเรียบร้อย', timer: 1800, showConfirmButton: false });
+                        writeAudit('ใบแทน', isRet ? `แนบใบรับคืนที่เซ็นแล้ว [${docNo}] → คืนแล้ว` : `แนบใบที่เซ็นแล้ว [${docNo}]`);
                         loadReplacementHistory();
                     },
                     (err) => Swal.fire({ icon: 'error', title: 'อัปโหลดไม่สำเร็จ', text: String(err) }),
