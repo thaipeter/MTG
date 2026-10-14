@@ -3156,6 +3156,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                                     <div class="d-flex flex-wrap gap-2 align-items-center">
                                         <select class="form-select form-select-sm w-auto" id="borrowHistStatus" onchange="renderBorrowHistory()"><option value="">ทุกสถานะ</option><option value="approved">กำลังยืม</option><option value="returned">คืนแล้ว</option><option value="pending">รออนุมัติ</option><option value="rejected">ไม่อนุมัติ</option></select>
                                         <input type="text" class="form-control form-control-sm w-auto" id="borrowHistSearch" placeholder="ค้นหาชื่อ, รหัส, ผู้ยืม..." onkeyup="renderBorrowHistory()" style="min-width:220px;">
+                                        <div class="d-flex align-items-center gap-1"><input type="date" class="form-control form-control-sm w-auto text-muted" id="borrowHistStartDate" onchange="renderBorrowHistory()" title="วันที่ยืม เริ่มต้น"><span class="text-muted">-</span><input type="date" class="form-control form-control-sm w-auto text-muted" id="borrowHistEndDate" onchange="renderBorrowHistory()" title="วันที่ยืม สิ้นสุด"><button class="btn btn-sm btn-light border" onclick="clearBorrowHistDates()" title="ล้างช่วงเวลา"><i class="fas fa-times"></i></button></div>
                                         <button class="btn btn-sm btn-light border" onclick="loadBorrowHistory()" title="รีเฟรช"><i class="fas fa-sync-alt"></i></button>
                                     </div>
                                     <button class="btn btn-outline-success btn-sm bg-white fw-bold shadow-sm" onclick="exportExcel('borrowHistoryTable', 'Borrow_History')"><i class="fas fa-file-excel"></i> Export</button>
@@ -8850,9 +8851,19 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 const tbody = document.querySelector('#borrowHistoryTable tbody'); if (!tbody) return;
                 const st = document.getElementById('borrowHistStatus')?.value || '';
                 const q = (document.getElementById('borrowHistSearch')?.value || '').trim().toLowerCase();
+                const sdStr = document.getElementById('borrowHistStartDate')?.value || '';
+                const edStr = document.getElementById('borrowHistEndDate')?.value || '';
+                const startDt = sdStr ? new Date(sdStr) : null; if (startDt) startDt.setHours(0,0,0,0);
+                const endDt = edStr ? new Date(edStr) : null; if (endDt) endDt.setHours(23,59,59,999);
                 const rows = borrowHistoryCache.filter(b => {
                     if (st && b.status !== st) return false;
                     if (q && ![b.itemCode, b.itemName, b.borrower, b.machine, b.remark].join(' ').toLowerCase().includes(q)) return false;
+                    if (startDt || endDt) {
+                        const rowDate = parseThaiDate(b.borrowDate);
+                        if (!rowDate) return false;
+                        if (startDt && rowDate < startDt) return false;
+                        if (endDt && rowDate > endDt) return false;
+                    }
                     return true;
                 });
                 const cnt = document.getElementById('borrowHistCount');
@@ -8870,6 +8881,12 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     <td><small class="text-muted">${escapeHtml(b.remark || '')}</small></td>
                 </tr>`).join('');
             } catch(e) { console.error(e); }
+        }
+
+        function clearBorrowHistDates() {
+            const s = document.getElementById('borrowHistStartDate'); const e = document.getElementById('borrowHistEndDate');
+            if (s) s.value = ''; if (e) e.value = '';
+            renderBorrowHistory();
         }
 
         function filterHistoryTable() {
