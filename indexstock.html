@@ -15730,7 +15730,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                     ? `<span class="small" style="color:#6b7280">-</span>`
                     : `<div class="d-flex gap-1 justify-content-center">${viewWhoHtml}<button class="btn btn-sm fw-bold" onclick='openRetroWithdrawModal(${JSON.stringify(d.itemCode)}, ${JSON.stringify(d.itemName)}, ${Math.abs(d.diff)})' style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#1a1200;border:none;border-radius:8px;font-size:.75rem"><i class="fas fa-history me-1"></i> เบิกย้อนหลัง</button></div>`;
                 return `<tr>
-                    <td><div class="fw-bold" style="color:#fff">${_stEsc(d.itemName)}</div><div class="small" style="color:#6b7280">${_stEsc(d.itemCode)}</div></td>
+                    <td><div class="fw-bold" style="color:#fff">${_stEsc(d.itemName)}</div><div class="small" style="color:#6b7280">${_stEsc(d.itemCode)}</div>${(d.resolved && d.resolvedRemark) ? `<div class="small mt-1" style="color:#86efac"><i class="fas fa-comment-dots me-1"></i>${_stEsc(d.resolvedRemark)}</div>` : ((!d.resolved && d.assignedRemark) ? `<div class="small mt-1" style="color:#93c5fd"><i class="fas fa-comment-dots me-1"></i>${_stEsc(d.assignedRemark)}</div>` : '')}</td>
                     <td class="text-center">${d.systemStock} ${_stEsc(d.unit)}</td>
                     <td class="text-center">${d.countedQty} ${_stEsc(d.unit)}</td>
                     <td class="text-center fw-bold" style="color:${diffColor}">${d.diff > 0 ? '+' : ''}${d.diff}</td>
