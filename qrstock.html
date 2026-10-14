@@ -729,6 +729,8 @@ body{display:flex;flex-direction:column}
 .st-bottom{padding:10px 16px calc(14px + env(safe-area-inset-bottom));display:flex;gap:10px;flex-shrink:0}
 .st-primary{flex:1;height:52px;border-radius:15px;border:0;background:var(--amber);color:#1b1200;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer}
 .st-primary:disabled{opacity:.5}
+.st-ghost:disabled{opacity:.5}
+.st-primary:active:not(:disabled),.st-ghost:active:not(:disabled),.st-chip:active{transform:scale(.97)}
 .st-ghost{height:52px;padding:0 16px;border-radius:15px;background:transparent;border:1px solid var(--border2);color:var(--text);font-size:15px;font-weight:600;font-family:inherit;cursor:pointer}
 .st-scan{width:52px;height:52px;border-radius:15px;background:var(--surface);border:1px solid var(--border2);color:var(--amber);font-size:20px;cursor:pointer}
 .st-overlay{position:absolute;inset:0;background:var(--bg);z-index:6;display:flex;flex-direction:column}
@@ -1202,7 +1204,7 @@ body{display:flex;flex-direction:column}
       <button onclick="stKey('c')" style="font-size:15px;color:var(--text2)">ล้าง</button><button onclick="stKey('0')">0</button><button onclick="stKey('b')" aria-label="ลบ"><i class="fas fa-delete-left"></i></button>
     </div>
     <div class="st-bottom" style="padding-top:10px">
-      <button class="st-ghost" onclick="stSaveZero()">ไม่พบของ (0)</button>
+      <button class="st-ghost" id="stZeroBtn" onclick="stSaveZero()">ไม่พบของ (0)</button>
       <button class="st-primary" id="stSaveBtn" onclick="stSave()">บันทึกและไปต่อ</button>
     </div>
   </div>
@@ -1226,7 +1228,7 @@ body{display:flex;flex-direction:column}
         <div class="st-chips" style="flex-wrap:wrap" id="stReasons"></div>
       </div>
       <button class="st-primary" style="width:100%" id="stShRecount" onclick="stSheetRecount()">นับซ้ำ</button>
-      <button class="st-ghost" style="width:100%" onclick="stSheetConfirm()">ยืนยัน ส่งให้แอดมินตรวจ</button>
+      <button class="st-ghost" style="width:100%" id="stShConfirmBtn" onclick="stSheetConfirm()">ยืนยัน ส่งให้แอดมินตรวจ</button>
     </div>
   </div>
 
@@ -2841,15 +2843,28 @@ function stBack() {
   stRender();
 }
 
+function stBusyUi(on, mode) {   // แสดง "กำลังบันทึก..." บนปุ่มทันทีที่กด ให้รู้ว่ากดติดแล้ว (เซิร์ฟเวอร์ตอบช้า 1-3 วิ)
+  const save = document.getElementById('stSaveBtn'), zero = document.getElementById('stZeroBtn');
+  const conf = document.getElementById('stShConfirmBtn'), rec = document.getElementById('stShRecount');
+  const spin = t => '<i class="fas fa-spinner fa-spin"></i> ' + t;
+  if (on) {
+    if (mode === 'sheet') { if (conf) { conf.dataset.o = conf.innerHTML; conf.innerHTML = spin('กำลังส่ง...'); conf.disabled = true; } if (rec) rec.disabled = true; }
+    else { if (save) { save.dataset.o = save.innerHTML; save.innerHTML = spin('กำลังบันทึก...'); save.disabled = true; } if (zero) zero.disabled = true; }
+  } else {
+    [save, conf].forEach(b => { if (b && b.dataset.o != null) { b.innerHTML = b.dataset.o; delete b.dataset.o; } });
+    [save, zero, conf, rec].forEach(b => { if (b) b.disabled = false; });
+  }
+}
+
 function stSaveZero() { if (stState.busy) return; stState.val = '0'; stValShow(); stSave(); }
 
 function stSave() {
   if (stState.busy || !stState.cur) return;
   if (stState.val === '') { showToast('กรุณากรอกจำนวนที่นับได้ (ถ้าไม่พบของให้กด ไม่พบของ)', 'error'); return; }
   const qty = Number(stState.val);
-  stState.busy = true; document.getElementById('stSaveBtn').disabled = true;
+  stState.busy = true; stBusyUi(true);
   stSubmit(qty, false, '', res => {
-    if (res.needRecount) { stState.pendingQty = qty; stShowSheet(qty, res.systemQty, res.diff); }
+    if (res.needRecount) { stState.pendingQty = qty; stShowSheet(qty, res.systemQty, res.diff); document.getElementById('stSaveBtn').disabled = true; }
     else stSaved(qty, res.diff, false);
   });
 }
@@ -2857,9 +2872,9 @@ function stSave() {
 function stSubmit(qty, final, reason, onOk) {
   const it = stState.cur;
   callGAS('webCountSubmit', [{ weekId: stState.weekId, itemCode: it.code, qty: qty, final: final, reason: reason, extra: !!it.extra, uid: me.uid, role: me.role, userName: me.name }], res => {
-    stState.busy = false; onOk(res);
+    stState.busy = false; stBusyUi(false); onOk(res);
   }, err => {
-    stState.busy = false; const b = document.getElementById('stSaveBtn'); if (b) b.disabled = false;
+    stState.busy = false; stBusyUi(false);
     Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', text: String(err), background: '#1a1f2e', color: '#e0e0e0' });
   });
 }
@@ -2907,7 +2922,7 @@ function stSheetRecount() {
 
 function stSheetConfirm() {
   if (stState.busy) return;
-  stState.busy = true;
+  stState.busy = true; stBusyUi(true, 'sheet');
   const qty = stState.pendingQty;
   stSubmit(qty, true, stState.reason, res => stSaved(qty, res.diff, res.diff !== 0));
 }
