@@ -15721,13 +15721,20 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             const body = text
                 ? `<div style="text-align:left;background:#12151d;border:1px solid #2a2f3d;border-left:3px solid ${resolved ? '#22c55e' : '#60a5fa'};border-radius:12px;padding:12px 14px;margin-top:14px"><div style="font-size:.75rem;color:#8d97a9;margin-bottom:4px">${label}</div><div style="color:#e6eaf2;white-space:pre-wrap;word-break:break-word">${_stEsc(text)}</div></div>`
                 : `<div style="margin-top:14px;color:#8d97a9;font-size:.9rem">ไม่ได้ระบุคำอธิบายไว้</div>`;
-            const when = (!resolved && d.assignedAt) ? `<div style="margin-top:8px;font-size:.78rem;color:#6b7280">มอบหมายเมื่อ ${_stEsc(d.assignedAt)}</div>` : '';
+            const row = (icon, label, val) => val ? `<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid #2a2f3d;font-size:.85rem"><span style="color:#8d97a9"><i class="fas ${icon} me-2" style="width:14px;text-align:center"></i>${label}</span><span style="color:#e6eaf2;text-align:right;word-break:break-word">${_stEsc(val)}</span></div>` : '';
+            let rows = row('fa-user-pen', 'ผู้นับ', (d.countedBy || '') + (d.timestamp ? ' · ' + d.timestamp : ''));
+            if (resolved) {
+                rows += row('fa-user-check', 'บันทึกคำอธิบายโดย', d.resolvedBy) + row('fa-user-tag', 'เบิกย้อนหลังในนาม', d.resolvedFor) + row('fa-boxes-stacked', 'จำนวนที่เบิกย้อนหลัง', d.resolvedQty != null ? d.resolvedQty + ' ' + (d.unit || '') : '') + row('fa-clock', 'บันทึกเมื่อ', d.resolvedAt);
+            } else {
+                rows += row('fa-user-tag', 'มอบหมายให้', d.assignedUserName) + row('fa-clock', 'มอบหมายเมื่อ', d.assignedAt);
+            }
+            const who = rows ? `<div style="margin-top:14px;text-align:left">${rows}</div>` : '';
             Swal.fire({
                 width: 480, showConfirmButton: true, confirmButtonText: 'ปิด', confirmButtonColor: '#e8a020',
                 background: '#1b1f2a', color: '#fff',
                 html: `<div style="font-size:1.15rem;font-weight:800">${_stEsc(d.itemName)}</div><div style="font-size:.8rem;color:#8d97a9;margin-bottom:14px">${_stEsc(d.itemCode)}</div>`
                     + `<div style="display:flex;gap:8px;margin-bottom:14px">${cell('ยอดระบบ', _stEsc(d.systemStock))}${cell('ยอดนับ', _stEsc(d.countedQty))}${cell('ส่วนต่าง', (d.diff > 0 ? '+' : '') + _stEsc(d.diff), col)}</div>`
-                    + head + body + when
+                    + head + body + who
             });
         }
 
