@@ -8943,7 +8943,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 const startDt = startDateStr ? new Date(startDateStr) : null; if(startDt) startDt.setHours(0,0,0,0); const endDt = endDateStr ? new Date(endDateStr) : null; if(endDt) endDt.setHours(23,59,59,999);
                 
                 const filteredLogs = allData.history.filter(log => {
-                    const fullText = (String(log.code) + " " + String(log.itemName) + " " + String(log.user)).toLowerCase(); const actionText = String(log.action).toLowerCase().trim(); const rowDate = parseThaiDate(log.time);
+                    const fullText = (String(log.code) + " " + String(log.itemName) + " " + String(log.user) + " " + String(log.remark || '')).toLowerCase(); const actionText = String(log.action).toLowerCase().trim(); const rowDate = parseThaiDate(log.time);
                     if (searchText !== '' && !fullText.includes(searchText)) return false; if (typeFilter !== '' && !actionText.includes(typeFilter)) return false;
                     if ((startDt || endDt) && !rowDate) return false;
                     if (startDt && rowDate < startDt) return false; 
@@ -15723,10 +15723,11 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                 : `<div style="margin-top:14px;color:#8d97a9;font-size:.9rem">ไม่ได้ระบุคำอธิบายไว้</div>`;
             const row = (icon, label, val) => val ? `<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid #2a2f3d;font-size:.85rem"><span style="color:#8d97a9"><i class="fas ${icon} me-2" style="width:14px;text-align:center"></i>${label}</span><span style="color:#e6eaf2;text-align:right;word-break:break-word">${_stEsc(val)}</span></div>` : '';
             let rows = row('fa-user-pen', 'ผู้นับ', (d.countedBy || '') + (d.timestamp ? ' · ' + d.timestamp : ''));
+            if (d.assignedUserName) rows += row('fa-user-gear', 'แอดมินผู้มอบหมาย', d.assignedBy) + row('fa-user-tag', 'มอบหมายให้', d.assignedUserName) + row('fa-clock', 'มอบหมายเมื่อ', d.assignedAt);
             if (resolved) {
-                rows += row('fa-user-check', 'บันทึกคำอธิบายโดย', d.resolvedBy) + row('fa-user-tag', 'เบิกย้อนหลังในนาม', d.resolvedFor) + row('fa-boxes-stacked', 'จำนวนที่เบิกย้อนหลัง', d.resolvedQty != null ? d.resolvedQty + ' ' + (d.unit || '') : '') + row('fa-clock', 'บันทึกเมื่อ', d.resolvedAt);
-            } else {
-                rows += row('fa-user-tag', 'มอบหมายให้', d.assignedUserName) + row('fa-clock', 'มอบหมายเมื่อ', d.assignedAt);
+                if (d.resolvedMode === 'self') rows += row('fa-user-check', 'ยืนยันเบิกย้อนหลังเองโดย', d.resolvedBy);
+                else rows += row('fa-user-check', 'บันทึกโดยแอดมิน', d.resolvedBy) + row('fa-user-tag', 'เบิกย้อนหลังในนาม', d.resolvedFor);
+                rows += row('fa-boxes-stacked', 'จำนวนที่เบิกย้อนหลัง', d.resolvedQty != null ? d.resolvedQty + ' ' + (d.unit || '') : '') + row('fa-clock', 'บันทึกเมื่อ', d.resolvedAt);
             }
             const who = rows ? `<div style="margin-top:14px;text-align:left">${rows}</div>` : '';
             Swal.fire({
