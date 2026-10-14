@@ -716,6 +716,7 @@ body{display:flex;flex-direction:column}
 .st-chip.red.on{background:var(--red);color:#fff}
 .st-tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;line-height:1.5;vertical-align:1px}
 .st-sec{font-size:12px;font-weight:700;color:var(--text2);padding:10px 2px 6px}
+.st-cat{font-size:12px;font-weight:700;color:#f59e0b;padding:10px 2px 4px;letter-spacing:.2px}
 .st-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:11px 13px;margin-bottom:8px;cursor:pointer}
 .st-row.red{border-color:rgba(239,83,80,.45)}
 .st-row.done{opacity:.65}
@@ -2682,6 +2683,16 @@ function stWeekText() {
   return 'ใบงานสัปดาห์ ' + s.getDate() + '–' + e.getDate() + ' ' + m[e.getMonth()];
 }
 
+function stSorted(list) {   // เรียงตามหมวด → รหัส ให้เดินนับต่อเนื่องไม่วนไปมา (รายการนอกใบงานไว้ท้าย)
+  const cat = i => String(i.category || '').trim();
+  return (list || stState.items).slice().sort((a, b) => {
+    if (!!a.extra !== !!b.extra) return a.extra ? 1 : -1;
+    const ca = cat(a), cb = cat(b);
+    if (ca !== cb) { if (!ca) return 1; if (!cb) return -1; return ca.localeCompare(cb, 'th'); }
+    return String(a.code).localeCompare(String(b.code), 'en', { numeric: true });
+  });
+}
+
 function stSetFilter(f) { stState.filter = f; stRender(); }
 
 function stRender() {
@@ -2697,7 +2708,7 @@ function stRender() {
     + '<button class="st-chip' + (f === 'todo' ? ' on' : '') + '" onclick="stSetFilter(\'todo\')">ยังไม่นับ ' + stState.items.filter(i => i.status === 'pending').length + '</button>'
     + (S.recount ? '<button class="st-chip red' + (f === 'recount' ? ' on' : '') + '" onclick="stSetFilter(\'recount\')">นับซ้ำ ' + S.recount + '</button>' : '');
   const el = document.getElementById('stList');
-  let items = stState.items.slice();
+  let items = stSorted();
   if (f === 'todo') items = items.filter(i => i.status === 'pending');
   if (f === 'recount') items = items.filter(i => i.status === 'recount');
   if (!items.length) { el.innerHTML = '<div class="empty-state"><i class="fas fa-box-open"></i><p>ไม่มีรายการในหมวดนี้</p></div>'; }
@@ -2706,7 +2717,14 @@ function stRender() {
     el.innerHTML = groups.map(g => {
       const arr = items.filter(i => i.status === g[0]);
       if (!arr.length) return '';
-      return '<div class="st-sec">' + g[1] + ' (' + arr.length + ')</div>' + arr.map(stRow).join('');
+      let lastCat = null;
+      const rowsHtml = arr.map(i => {
+        const c = String(i.category || '').trim() || 'ไม่ระบุหมวด';
+        let h = '';
+        if (g[0] !== 'counted' && c !== lastCat) { h = '<div class="st-cat">' + esc(c) + '</div>'; lastCat = c; }
+        return h + stRow(i);
+      }).join('');
+      return '<div class="st-sec">' + g[1] + ' (' + arr.length + ')</div>' + rowsHtml;
     }).join('');
   }
   const btn = document.getElementById('stNextBtn');
@@ -2752,7 +2770,13 @@ function stRow(i) {
 function stNext() {
   const S = stStats();
   if (S.remain === 0 && S.total > 0) { stShowDone(); return; }
-  const it = stState.items.find(i => i.status === 'recount') || stState.items.find(i => i.status === 'pending' && !i.extra);
+  const sorted = stSorted();
+  let it = sorted.find(i => i.status === 'recount');   // นับซ้ำก่อน (ของยังอยู่ตรงหน้า)
+  if (!it) {
+    const pend = sorted.filter(i => i.status === 'pending' && !i.extra);
+    const lastIdx = stState.last ? sorted.findIndex(i => i.code === stState.last.code) : -1;
+    it = pend.find(i => sorted.indexOf(i) > lastIdx) || pend[0];   // ถัดจากรายการที่เพิ่งนับ ถ้าหมดท้ายลิสต์ค่อยวนกลับไปต้น
+  }
   if (it) stOpen(it.code);
 }
 
@@ -2771,7 +2795,7 @@ function stOpen(code, viaScan) {
 
 function stCountUpdate() {
   const it = stState.cur; if (!it) return;
-  const base = stState.items.filter(i => !i.extra);
+  const base = stSorted(stState.items.filter(i => !i.extra));
   const idx = base.findIndex(i => i.code === it.code);
   const S = stStats();
   document.getElementById('stPos').textContent = it.extra ? 'นับเพิ่มนอกใบงาน' : ('รายการที่ ' + (idx + 1) + ' จาก ' + base.length);
@@ -2843,6 +2867,7 @@ function stSubmit(qty, final, reason, onOk) {
 function stSaved(qty, diff, sentToReview) {
   const it = stState.cur;
   it.status = 'counted'; it.countedQty = qty; it.diff = diff;
+  stState.last = it;
   showToast(sentToReview ? 'ส่งให้แอดมินตรวจแล้ว' : (diff === 0 ? 'ยอดตรง บันทึกแล้ว' : 'บันทึกแล้ว'), 'success');
   document.getElementById('stCountView').style.display = 'none';
   document.getElementById('stSheetWrap').style.display = 'none';
