@@ -4146,34 +4146,60 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     </ul>
 
                     <div id="stTabKeyPane">
-                        <div class="row g-4 mb-4">
-                        <div class="col-12 col-lg-8">
-                            <div class="card border-0 shadow-sm" style="background:#1a2230;border-radius:16px">
-                                <div class="card-body p-4">
-                                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                                        <div>
-                                            <h5 class="fw-bold mb-1" style="color:#fff" id="stMgmtSessionLabel">รอบนับเดือน -</h5>
-                                            <span class="badge rounded-pill" id="stMgmtBadge" style="background:#f59e0b;color:#1a1200;font-weight:700">0/0 นับแล้ว</span>
-                                        </div>
-                                        <div class="d-flex gap-2">
-                                            <input type="text" id="stMgmtSearch" class="form-control form-control-sm" placeholder="ค้นหาสินค้า..." style="background:#232838;color:#e0e0e0;border:1px solid #2a2f3d;border-radius:8px;width:180px" oninput="renderStockTakeMgmtList()">
-                                            <button class="btn btn-sm fw-bold" onclick="doCloseStockTakeMgmt()" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#1a1200;border:none;border-radius:8px"><i class="fas fa-flag-checkered me-1"></i> ปิดรอบ</button>
-                                        </div>
+                        <style>
+                            .st-chip{background:#232838;color:#a0aec0;border:1px solid #2a2f3d;border-radius:999px;padding:6px 14px;font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s}
+                            .st-chip b{margin-left:4px;font-weight:700}
+                            .st-chip:hover{color:#fff;border-color:#3b4256}
+                            .st-chip.active{background:#f59e0b;border-color:#f59e0b;color:#1a1200}
+                            .st-input{width:110px;height:42px;background:#232838;color:#fff;border:1px solid #3b4256;border-radius:10px;text-align:center;font-size:1.05rem;font-weight:700}
+                            .st-input:focus{outline:none;border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.25)}
+                            .st-input.st-err{border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.25)}
+                            .st-input.st-saved{border-color:#22c55e}
+                            .st-save{height:42px;padding:0 14px;background:#3a2e1e;color:#f59e0b;border:1px solid #5f4a2a;border-radius:10px;font-weight:700;white-space:nowrap}
+                            .st-save:hover{background:#4a3a24}
+                            .st-save:disabled{opacity:.6;cursor:not-allowed}
+                            .st-pill{display:inline-block;min-width:74px;padding:4px 10px;border-radius:999px;font-size:.82rem;font-weight:700;text-align:center;white-space:nowrap}
+                            .st-pill-wait{background:#232838;color:#6b7280}
+                            .st-pill-ok{background:rgba(34,197,94,.15);color:#22c55e}
+                            .st-pill-up{background:rgba(34,197,94,.15);color:#22c55e}
+                            .st-pill-down{background:rgba(239,68,68,.15);color:#ef4444}
+                            #stMgmtTableBody tr.st-flash{animation:stFlash .9s ease}
+                            @keyframes stFlash{0%{background:rgba(34,197,94,.25)}100%{background:transparent}}
+                            #stMgmtTableBody tr:hover{background:rgba(255,255,255,.03)}
+                            #stMgmtTableBody td{padding-top:.55rem;padding-bottom:.55rem;border-color:#232838}
+                            .st-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:3000;padding:10px 20px;border-radius:12px;font-weight:600;font-size:.95rem;box-shadow:0 8px 24px rgba(0,0,0,.4);pointer-events:none}
+                        </style>
+                        <div class="card border-0 shadow-sm mb-4" style="background:#1a2230;border-radius:16px">
+                            <div class="card-body p-3 p-md-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                                        <h5 class="fw-bold mb-0" style="color:#fff" id="stMgmtSessionLabel">รอบนับเดือน -</h5>
+                                        <span class="badge rounded-pill" id="stMgmtBadge" style="background:#f59e0b;color:#1a1200;font-weight:700">0/0 นับแล้ว</span>
                                     </div>
-                                    <p class="small mb-3" style="color:rgba(255,255,255,.4)">คีย์ยอดแทนพนักงานที่นับจากกระดาษได้ที่นี่ — ถ้ายอดไม่ตรงกับระบบจะปรับสต็อกให้อัตโนมัติทันที</p>
-                                    <div style="max-height:520px;overflow-y:auto;overflow-x:auto">
-                                        <table class="table table-sm align-middle mb-0" style="color:#e0e0e0;min-width:480px">
-                                            <thead style="position:sticky;top:0;background:#1a2230;z-index:1">
-                                                <tr style="color:rgba(255,255,255,.4);font-size:.72rem;text-transform:uppercase">
-                                                    <th>สินค้า</th><th class="text-center">ยอดระบบ</th><th class="text-center">ยอดนับ</th><th class="text-center">ส่วนต่าง</th><th class="text-center">คีย์ยอด</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="stMgmtTableBody"></tbody>
-                                        </table>
+                                    <button class="btn btn-sm fw-bold px-3" onclick="doCloseStockTakeMgmt()" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#1a1200;border:none;border-radius:10px;height:38px"><i class="fas fa-flag-checkered me-1"></i> ปิดรอบ</button>
+                                </div>
+                                <div class="progress mb-3" style="height:8px;background:#232838;border-radius:999px"><div id="stMgmtProgress" class="progress-bar" style="width:0%;background:#22c55e;border-radius:999px;transition:width .3s"></div></div>
+                                <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                                    <input type="text" id="stMgmtSearch" class="form-control" placeholder="🔍 ค้นหาชื่อ / รหัสสินค้า..." style="background:#232838;color:#e0e0e0;border:1px solid #2a2f3d;border-radius:10px;height:42px;max-width:340px;min-width:220px;flex:1 1 220px" oninput="renderStockTakeMgmtList()">
+                                    <div class="d-flex flex-wrap gap-2" id="stMgmtChips">
+                                        <button type="button" class="st-chip active" data-f="all" onclick="stMgmtSetFilter('all')">ทั้งหมด<b id="stChipAll">0</b></button>
+                                        <button type="button" class="st-chip" data-f="pending" onclick="stMgmtSetFilter('pending')">ยังไม่นับ<b id="stChipPending">0</b></button>
+                                        <button type="button" class="st-chip" data-f="done" onclick="stMgmtSetFilter('done')">นับแล้ว<b id="stChipDone">0</b></button>
+                                        <button type="button" class="st-chip" data-f="diff" onclick="stMgmtSetFilter('diff')">มีส่วนต่าง<b id="stChipDiff">0</b></button>
                                     </div>
                                 </div>
+                                <p class="small mb-3" style="color:rgba(255,255,255,.45)"><i class="fas fa-keyboard me-1"></i> พิมพ์ยอดที่นับได้ แล้วกด <b style="color:#f59e0b">Enter</b> เพื่อบันทึกและไปช่องถัดไปทันที — ถ้ายอดไม่ตรงกับระบบ จะปรับสต็อกให้อัตโนมัติ</p>
+                                <div id="stMgmtScroll" style="max-height:calc(100vh - 400px);min-height:320px;overflow:auto">
+                                    <table class="table align-middle mb-0" style="color:#e0e0e0;min-width:560px;--bs-table-bg:transparent;--bs-table-color:#e0e0e0">
+                                        <thead style="position:sticky;top:0;background:#1a2230;z-index:1">
+                                            <tr style="color:rgba(255,255,255,.45);font-size:.78rem">
+                                                <th>สินค้า</th><th class="text-center" style="width:120px">ยอดระบบ</th><th class="text-center" style="width:250px">ยอดที่นับได้</th><th class="text-center" style="width:120px">ผลต่าง</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="stMgmtTableBody"></tbody>
+                                    </table>
+                                </div>
                             </div>
-                        </div>
                         </div>
                     </div>
 
@@ -15457,12 +15483,12 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
         function loadStockTakeMgmt() {
             const tbody = document.getElementById('stMgmtTableBody');
             if (!tbody) return;
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4" style="color:#6b7280"><i class="fas fa-spinner fa-spin me-2"></i>กำลังโหลด...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4" style="color:#6b7280"><i class="fas fa-spinner fa-spin me-2"></i>กำลังโหลด...</td></tr>';
             
             if (typeof google !== 'undefined' && google.script && google.script.run && typeof google.script.run.webGetStockTakeProgress === 'function') {
                 google.script.run
                     .withSuccessHandler(function(res) {
-                        if (!res || !res.success) { tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-danger small">โหลดไม่สำเร็จ: ' + (res && res.error || '') + '</td></tr>'; return; }
+                        if (!res || !res.success) { tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-danger small">โหลดไม่สำเร็จ: ' + (res && res.error || '') + '</td></tr>'; return; }
                         stMgmtState.sessionId = res.sessionId;
                         stMgmtState.items = res.items || [];
                         document.getElementById('stMgmtSessionLabel').textContent = 'รอบนับเดือน ' + String(res.month).padStart(2, '0') + '/' + (res.year + 543) + (res.status === 'closed' ? ' (ปิดรอบแล้ว)' : '');
@@ -15471,7 +15497,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                         loadStockTakeDiffs();
                     })
                     .withFailureHandler(function(err) { 
-                        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-danger small">โหลดไม่สำเร็จ: ' + err + '</td></tr>'; 
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-danger small">โหลดไม่สำเร็จ: ' + err + '</td></tr>'; 
                     })
                     .webGetStockTakeProgress({ role: currentUserProfile.role, userName: currentUserProfile.name, adminUid: currentUserProfile.userId || currentUserProfile.uid || '-' });
             } else {
@@ -15713,76 +15739,152 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                 });
         }
 
+        let stMgmtFilter = 'all';
+
+        function _stLiveDiff(it) { return it.counted ? (Number(it.countedQty) - Number(it.systemStock || 0)) : null; }
+
+        function _stStatusHtml(it) {
+            if (!it.counted) return '<span class="st-pill st-pill-wait">ยังไม่นับ</span>';
+            const d = _stLiveDiff(it);
+            if (d === 0) return '<span class="st-pill st-pill-ok"><i class="fas fa-check me-1"></i>ตรง</span>';
+            return '<span class="st-pill ' + (d > 0 ? 'st-pill-up' : 'st-pill-down') + '">' + (d > 0 ? '+' : '') + d + '</span>';
+        }
+
+        function _stToast(msg, kind) {
+            const old = document.getElementById('stToastEl'); if (old) old.remove();
+            const el = document.createElement('div');
+            el.id = 'stToastEl'; el.className = 'st-toast';
+            el.style.background = kind === 'error' ? '#7f1d1d' : (kind === 'warn' ? '#78350f' : '#14532d');
+            el.style.color = '#fff'; el.textContent = msg;
+            document.body.appendChild(el);
+            setTimeout(function() { el.remove(); }, 1600);
+        }
+
+        function stMgmtUpdateSummary() {
+            const items = stMgmtState.items || [];
+            const total = items.length;
+            const done = items.filter(function(i) { return i.counted; }).length;
+            const diff = items.filter(function(i) { return i.counted && _stLiveDiff(i) !== 0; }).length;
+            const set = function(id, v) { const e = document.getElementById(id); if (e) e.textContent = v; };
+            set('stMgmtBadge', done + '/' + total + ' นับแล้ว');
+            set('stChipAll', total); set('stChipPending', total - done); set('stChipDone', done); set('stChipDiff', diff);
+            const bar = document.getElementById('stMgmtProgress'); if (bar) bar.style.width = (total ? (done / total * 100) : 0) + '%';
+        }
+
+        function stMgmtSetFilter(f) {
+            stMgmtFilter = f;
+            document.querySelectorAll('#stMgmtChips .st-chip').forEach(function(b) { b.classList.toggle('active', b.dataset.f === f); });
+            renderStockTakeMgmtList();
+        }
+
+        function _stMatch(it) {
+            const kw = (document.getElementById('stMgmtSearch').value || '').trim().toLowerCase();
+            if (kw && !(String(it.name).toLowerCase().includes(kw) || String(it.code).toLowerCase().includes(kw))) return false;
+            if (stMgmtFilter === 'pending') return !it.counted;
+            if (stMgmtFilter === 'done') return !!it.counted;
+            if (stMgmtFilter === 'diff') return it.counted && _stLiveDiff(it) !== 0;
+            return true;
+        }
+
+        function stMgmtBindEvents() {
+            const tb = document.getElementById('stMgmtTableBody');
+            if (!tb || tb._stBound) return;
+            tb._stBound = true;
+            tb.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && e.target.matches('input[data-code]')) { e.preventDefault(); stMgmtSaveCount(e.target.dataset.code, true); }
+            });
+            tb.addEventListener('click', function(e) {
+                const b = e.target.closest('button[data-code]'); if (b) stMgmtSaveCount(b.dataset.code, false);
+            });
+            tb.addEventListener('focusin', function(e) { if (e.target.matches('input[data-code]')) e.target.select(); });
+            tb.addEventListener('input', function(e) { if (e.target.classList) e.target.classList.remove('st-err'); });
+        }
+
         function renderStockTakeMgmtList() {
             const tbody = document.getElementById('stMgmtTableBody');
             if (!tbody) return;
-            const kw = (document.getElementById('stMgmtSearch').value || '').toLowerCase();
-            const items = stMgmtState.items.filter(i => !kw || i.name.toLowerCase().includes(kw) || i.code.toLowerCase().includes(kw));
-            if (!items.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4" style="color:#6b7280">ไม่พบสินค้า</td></tr>'; return; }
+            stMgmtBindEvents();
+            stMgmtUpdateSummary();
+            const items = stMgmtState.items.filter(_stMatch);
+            if (!items.length) {
+                const msg = stMgmtFilter === 'pending' && !(document.getElementById('stMgmtSearch').value || '').trim() ? '🎉 นับครบทุกรายการแล้ว' : 'ไม่พบสินค้า';
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-5" style="color:#6b7280">' + msg + '</td></tr>'; return;
+            }
             tbody.innerHTML = items.map(function(it) {
-                const liveDiff = it.counted ? (Number(it.countedQty) - Number(it.systemStock || 0)) : null;
-                const diffHtml = it.counted
-                    ? (liveDiff === 0 ? '<span style="color:#22c55e">ตรง</span>' : '<span style="color:' + (liveDiff > 0 ? '#22c55e' : '#ef4444') + '">' + (liveDiff > 0 ? '+' : '') + liveDiff + '</span>')
-                    : '<span style="color:#6b7280">-</span>';
-                return '<tr style="border-bottom:1px solid #232838">'
-                    + '<td><div class="fw-bold" style="font-size:13px">' + it.name.replace(/</g,'&lt;') + '</div><div style="font-size:11px;color:#6b7280">' + it.code + '</div></td>'
-                    + '<td class="text-center">' + it.systemStock + ' ' + it.unit + '</td>'
-                    + '<td class="text-center">' + (it.counted ? it.countedQty : '-') + '</td>'
-                    + '<td class="text-center">' + diffHtml + '</td>'
-                    + '<td class="text-center"><input type="number" min="0" style="width:80px;background:#232838;color:#e0e0e0;border:1px solid #2a2f3d;border-radius:6px;text-align:center" id="stMgmtInput_' + it.code + '" value="' + (it.counted ? it.countedQty : '') + '" placeholder="' + it.systemStock + '"> '
-                    + '<button id="stMgmtSaveBtn_' + it.code + '" class="btn btn-sm mt-1" onclick="stMgmtSaveCount(\'' + it.code + '\')" style="background:#3a2e1e;color:#f59e0b;border:1px solid #5f4a2a;border-radius:6px"><i class="fas fa-save"></i></button></td>'
+                const c = _stEsc(it.code);
+                return '<tr data-code="' + c + '">'
+                    + '<td><div class="fw-bold" style="font-size:.95rem;color:#fff">' + _stEsc(it.name) + '</div><div style="font-size:.78rem;color:#6b7280">' + c + '</div></td>'
+                    + '<td class="text-center st-sys" style="font-size:1rem">' + _stEsc(it.systemStock) + ' <span style="color:#6b7280;font-size:.8rem">' + _stEsc(it.unit) + '</span></td>'
+                    + '<td class="text-center"><div class="d-inline-flex gap-2 align-items-center">'
+                    + '<input type="number" inputmode="decimal" min="0" step="any" class="st-input' + (it.counted ? ' st-saved' : '') + '" id="stMgmtInput_' + c + '" data-code="' + c + '" value="' + (it.counted ? _stEsc(it.countedQty) : '') + '" placeholder="ยอดนับ">'
+                    + '<button type="button" class="st-save" id="stMgmtSaveBtn_' + c + '" data-code="' + c + '" title="บันทึก (Enter)"><i class="fas fa-check me-1"></i>บันทึก</button>'
+                    + '</div></td>'
+                    + '<td class="text-center st-status">' + _stStatusHtml(it) + '</td>'
                     + '</tr>';
             }).join('');
         }
 
-        function stMgmtSaveCount(code) {
+        function stMgmtSaveCount(code, advance) {
             const input = document.getElementById('stMgmtInput_' + code);
+            if (!input || input.dataset.saving === '1') return;
+            const tr = input.closest('tr');
+            const focusNext = function() {
+                let nx = tr ? tr.nextElementSibling : null;
+                while (nx && !nx.querySelector('input')) nx = nx.nextElementSibling;
+                const ni = nx ? nx.querySelector('input') : null;
+                if (ni) { ni.focus(); ni.select(); try { ni.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} }
+            };
+            // Enter ในช่องว่าง = ข้ามไปรายการถัดไป (ไม่บันทึก)
+            if (input.value === '' && advance) { focusNext(); return; }
             const val = Number(input.value);
-            if (input.value === '' || isNaN(val) || val < 0) { Swal.fire({icon:'warning', title:'กรอกจำนวนให้ถูกต้อง', timer:1500, showConfirmButton:false}); return; }
+            if (input.value === '' || isNaN(val) || val < 0) { input.classList.add('st-err'); input.focus(); _stToast('กรอกจำนวนให้ถูกต้อง', 'warn'); return; }
+            const it = stMgmtState.items.find(function(i) { return i.code === code; });
+            if (!it) return;
+            if (advance) focusNext();   // ไปช่องถัดไปทันที ไม่ต้องรอเซิร์ฟเวอร์
 
-            // ★ แสดงสถานะกำลังโหลดบนปุ่มระหว่างรอ google.script.run ตอบกลับ (ปกติใช้เวลา 1-3 วิ)
-            // ป้องกันผู้ใช้กดซ้ำ และให้เห็นว่าระบบกำลังทำงานอยู่ ไม่ใช่ค้าง
             const btn = document.getElementById('stMgmtSaveBtn_' + code);
             const btnOriginalHtml = btn ? btn.innerHTML : '';
-            if (btn) {
-                btn.disabled = true;
-                btn.style.opacity = '.6';
-                btn.style.cursor = 'not-allowed';
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            }
-            const restoreBtn = function() {
-                if (!btn) return;
-                btn.disabled = false;
-                btn.style.opacity = '';
-                btn.style.cursor = 'pointer';
-                btn.innerHTML = btnOriginalHtml;
+            input.dataset.saving = '1'; input.readOnly = true;
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+            const finish = function() {
+                input.dataset.saving = ''; input.readOnly = false;
+                if (btn) { btn.disabled = false; btn.innerHTML = btnOriginalHtml; }
+            };
+            const onSaved = function(diff) {
+                finish();
+                it.counted = true; it.countedQty = val;
+                if (typeof diff === 'number' && !isNaN(diff)) it.systemStock = val - diff;
+                stMgmtUpdateSummary();
+                const row = input.closest('tr');
+                if (row && row.isConnected) {
+                    if (!_stMatch(it)) { row.remove(); }
+                    else {
+                        input.classList.remove('st-err'); input.classList.add('st-saved');
+                        const sys = row.querySelector('.st-sys'); if (sys) sys.innerHTML = _stEsc(it.systemStock) + ' <span style="color:#6b7280;font-size:.8rem">' + _stEsc(it.unit) + '</span>';
+                        const stc = row.querySelector('.st-status'); if (stc) stc.innerHTML = _stStatusHtml(it);
+                        row.classList.remove('st-flash'); void row.offsetWidth; row.classList.add('st-flash');
+                    }
+                }
+                const d = _stLiveDiff(it);
+                _stToast(d === 0 ? '✓ ยอดตรง บันทึกแล้ว' : '✓ ปรับยอด ' + (d > 0 ? '+' : '') + d + ' แล้ว', 'ok');
+                loadStockTakeDiffs();
             };
 
             if (typeof google !== 'undefined' && google.script && google.script.run && typeof google.script.run.webSubmitStockCount === 'function') {
                 google.script.run
                     .withSuccessHandler(function(res) {
-                        if (!res || !res.success) { restoreBtn(); Swal.fire({icon:'error', title:'บันทึกไม่สำเร็จ', text: res && res.error || ''}); return; }
-                        Swal.fire({icon:'success', title: res.diff === 0 ? 'ยอดตรง บันทึกแล้ว' : 'ปรับยอด ' + (res.diff > 0 ? '+' : '') + res.diff + ' แล้ว', timer:1200, showConfirmButton:false});
-                        loadStockTakeMgmt();
+                        if (!res || !res.success) { finish(); input.classList.add('st-err'); Swal.fire({icon:'error', title:'บันทึกไม่สำเร็จ', text: res && res.error || ''}); return; }
+                        onSaved(Number(res.diff));
                     })
-                    .withFailureHandler(function(err) { restoreBtn(); Swal.fire({icon:'error', title:'บันทึกไม่สำเร็จ', text: String(err)}); })
+                    .withFailureHandler(function(err) { finish(); input.classList.add('st-err'); Swal.fire({icon:'error', title:'บันทึกไม่สำเร็จ', text: String(err)}); })
                     .webSubmitStockCount({ sessionId: stMgmtState.sessionId, itemCode: code, countedQty: val, role: currentUserProfile.role, userName: currentUserProfile.name, source: 'manual', adminUid: currentUserProfile.userId || currentUserProfile.uid || '-' });
             } else {
                 // Fallback Mode: บันทึกเข้า Memory Local
                 if (!stMgmtState.counts) stMgmtState.counts = {};
                 stMgmtState.counts[code] = val;
-                
-                const targetItem = (allData.items || []).find(i => i.code === code);
-                const sysStock = targetItem ? Number(targetItem.stock || 0) : 0;
-                const diff = val - sysStock;
-                
-                Swal.fire({
-                    icon: 'success', 
-                    title: diff === 0 ? 'ยอดตรง บันทึกแล้ว' : 'บันทึกยอดนับแล้ว (ส่วนต่าง ' + (diff > 0 ? '+' : '') + diff + ')', 
-                    timer: 1200, 
-                    showConfirmButton: false
-                });
-                loadStockTakeMgmt();
+                const targetItem = (allData.items || []).find(function(i) { return i.code === code; });
+                const sysStock = targetItem ? Number(targetItem.stock || 0) : Number(it.systemStock || 0);
+                onSaved(val - sysStock);
             }
         }
 
