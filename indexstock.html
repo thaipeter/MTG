@@ -8823,7 +8823,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 borrows.forEach(b => { 
                     let tr = document.createElement('tr'); let safeName = String(b.itemName || '').replace(/'/g, "\\'"); let safeCode = String(b.itemCode || '').replace(/'/g, "\\'"); let safeReqId = String(b.reqId || '').replace(/'/g, "\\'");
                     let actionBtn = currentUserProfile.role === 'admin' ? `<button class="btn btn-sm btn-info text-white fw-bold shadow-sm w-100" onclick="returnBorrowedItem('${safeReqId}', '${safeCode}', '${safeName}', ${b.qty})"><i class="fas fa-undo me-1"></i> กดรับคืน</button>` : `<span class="badge bg-warning text-dark px-3 py-2 w-100">รอส่งคืน</span>`;
-                    tr.innerHTML = `<td><small class="text-muted font-monospace bg-light px-2 py-1 rounded">${escapeHtml(b.date)}</small></td><td class="fw-bold text-dark">${escapeHtml(b.itemName)} <span class="badge bg-light text-secondary border font-monospace ms-2 fw-normal">${escapeHtml(b.itemCode)}</span></td><td><span class="badge bg-info bg-opacity-10 text-info px-2 py-1"><i class="fas fa-map-marker-alt me-1"></i> ${escapeHtml(b.machine)}</span></td><td class="text-center fw-bold text-danger fs-5">${formatNumber(b.qty)}</td><td class="fw-medium text-secondary"><i class="fas fa-user-tag me-1"></i> ${escapeHtml(b.borrower)}</td><td><small class="text-muted">${escapeHtml(b.remark)}</small></td><td class="text-center" style="width:120px;">${actionBtn}</td>`; tbody.appendChild(tr); 
+                    if (currentUserProfile.role === 'admin') actionBtn += `<button class="btn btn-sm btn-outline-warning fw-bold w-100 mt-1" onclick="rplFromBorrow('${safeReqId}')" title="ออกใบแทนพร้อมเติมข้อมูลจากรายการยืมนี้"><i class="fas fa-clone me-1"></i> ออกใบแทน</button>`;
+                    tr.innerHTML = `<td><small class="text-muted font-monospace bg-light px-2 py-1 rounded">${escapeHtml(b.date)}</small></td><td class="fw-bold text-dark">${escapeHtml(b.itemName)} <span class="badge bg-light text-secondary border font-monospace ms-2 fw-normal">${escapeHtml(b.itemCode)}</span></td><td><span class="badge bg-info bg-opacity-10 text-info px-2 py-1"><i class="fas fa-map-marker-alt me-1"></i> ${escapeHtml(b.machine)}</span></td><td class="text-center fw-bold text-danger fs-5">${formatNumber(b.qty)}</td><td class="fw-medium text-secondary"><i class="fas fa-user-tag me-1"></i> ${escapeHtml(b.borrower)}</td><td><small class="text-muted">${escapeHtml(b.remark)}</small></td><td class="text-center" style="width:140px;">${actionBtn}</td>`; tbody.appendChild(tr); 
                 });
             } catch(e) { console.error(e); }
         }
@@ -13243,6 +13244,53 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             window.rplSelectInstance = new TomSelect("#rplItemCode", { create: false, sortField: { field: "text", direction: "asc" } });
 
             toggleReplacementDueDate();
+            try { applyRplPrefill(); } catch (e) { console.warn('applyRplPrefill error:', e); }
+        }
+
+        // ★ ออกใบแทนจากรายการค้างยืม — เก็บรายการที่เลือกไว้ แล้วให้ initReplacementSlipForm เติมลงฟอร์มหลังเปิดหน้า
+        window.__rplPrefill = null;
+        function rplFromBorrow(reqId) {
+            const all = allData.activeBorrows || [];
+            const b = all.find(x => String(x.reqId) === String(reqId));
+            if (!b) return Swal.fire({icon: 'error', title: 'ไม่พบรายการยืม', text: 'ลองรีเฟรชหน้าแล้วกดใหม่'});
+            const same = all.filter(x => String(x.borrower) === String(b.borrower));
+            const go = (list) => { window.__rplPrefill = list; goTo('replacementSlip'); };
+            if (same.length > 1) {
+                Swal.fire({
+                    icon: 'question', title: 'ออกใบแทนให้ ' + (b.borrower || 'ผู้ยืม'),
+                    text: 'ผู้ยืมรายนี้มีของค้างยืมอยู่ ' + same.length + ' รายการ',
+                    showDenyButton: true, showCancelButton: true,
+                    confirmButtonText: 'รวมทั้ง ' + same.length + ' รายการ', denyButtonText: 'เฉพาะรายการนี้', cancelButtonText: 'ยกเลิก'
+                }).then(r => { if (r.isConfirmed) go(same); else if (r.isDenied) go([b]); });
+            } else go([b]);
+        }
+
+        function applyRplPrefill() {
+            const list = window.__rplPrefill;
+            if (!list || !list.length) return;
+            window.__rplPrefill = null;
+            const first = list[0];
+            const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+            setV('rplType', 'ยืม');
+            toggleReplacementDueDate();
+            fillDefaultReplacementTerms();
+            setV('rplPerson', first.borrower || '');
+            const machines = Array.from(new Set(list.map(b => String(b.machine || '').trim()).filter(m => m && m !== '-')));
+            const remarks = Array.from(new Set(list.map(b => String(b.remark || '').trim()).filter(r => r && r !== 'ยืมผ่านหน้างาน')));
+            const purpose = [].concat(remarks, machines.length ? ['ใช้งานที่ ' + machines.join(', ')] : []).join(' / ');
+            setV('rplRemark', purpose);
+            const days = parseInt(allData.settings?.maxBorrowDays) || parseInt(document.getElementById('setMaxBorrowDays')?.value) || 7;
+            const due = new Date(); due.setDate(due.getDate() + days);
+            setV('rplDueDate', due.toISOString().slice(0, 10));
+            const pool = (allData.items || []).concat(allData.tools || []);
+            list.forEach(b => {
+                const f = pool.find(i => i.code === b.itemCode);
+                const ex = rplCartItems.find(it => it.code === b.itemCode);
+                if (ex) ex.qty += Number(b.qty) || 0;
+                else rplCartItems.push({ code: b.itemCode, name: b.itemName || (f ? f.name : b.itemCode), unit: f ? (f.unit || '') : '', qty: Number(b.qty) || 1, note: '', location: f ? (f.location || '-') : '-' });
+            });
+            renderReplacementCart();
+            Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'เติมข้อมูลจากรายการยืมให้แล้ว ตรวจสอบก่อนพิมพ์', showConfirmButton: false, timer: 3500});
         }
 
         function toggleReplacementDueDate() {
