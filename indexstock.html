@@ -3145,11 +3145,11 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         <div class="tab-content border-top">
                             <div class="tab-pane fade show active p-4" id="tabBorrowToolsMain">
                                 <div class="d-flex justify-content-end mb-3"><button class="btn btn-outline-success btn-sm bg-white fw-bold shadow-sm" onclick="exportExcel('borrowedToolsTableMain', 'Borrowed_Tools')"><i class="fas fa-file-excel"></i> Export</button></div>
-                                <div class="table-responsive border rounded"><table class="table table-hover align-middle mb-0" id="borrowedToolsTableMain"><thead><tr><th>วันที่ทำรายการ</th><th>ชื่อเครื่องมือ</th><th>สถานที่ใช้งาน</th><th class="text-center">จำนวนยืม</th><th>ผู้ยืม</th><th>หมายเหตุ</th><th class="text-center text-primary">รับคืน</th></tr></thead><tbody></tbody></table></div>
+                                <div class="table-responsive border rounded"><table class="table table-hover align-middle mb-0" id="borrowedToolsTableMain"><thead><tr><th class="text-nowrap">วันที่ทำรายการ</th><th>ชื่อเครื่องมือ</th><th>สถานที่ใช้งาน</th><th class="text-center text-nowrap">จำนวนยืม</th><th>ผู้ยืม</th><th>หมายเหตุ</th><th class="text-end text-primary text-nowrap">จัดการ</th></tr></thead><tbody></tbody></table></div>
                             </div>
                             <div class="tab-pane fade p-4" id="tabBorrowItemsMain">
                                 <div class="d-flex justify-content-end mb-3"><button class="btn btn-outline-success btn-sm bg-white fw-bold shadow-sm" onclick="exportExcel('borrowedItemsTableMain', 'Borrowed_Items')"><i class="fas fa-file-excel"></i> Export</button></div>
-                                <div class="table-responsive border rounded"><table class="table table-hover align-middle mb-0" id="borrowedItemsTableMain"><thead><tr><th>วันที่ทำรายการ</th><th>ชื่ออะไหล่</th><th>สถานที่ใช้งาน</th><th class="text-center">จำนวนยืม</th><th>ผู้ยืม</th><th>หมายเหตุ</th><th class="text-center text-primary">รับคืน</th></tr></thead><tbody></tbody></table></div>
+                                <div class="table-responsive border rounded"><table class="table table-hover align-middle mb-0" id="borrowedItemsTableMain"><thead><tr><th class="text-nowrap">วันที่ทำรายการ</th><th>ชื่ออะไหล่</th><th>สถานที่ใช้งาน</th><th class="text-center text-nowrap">จำนวนยืม</th><th>ผู้ยืม</th><th>หมายเหตุ</th><th class="text-end text-primary text-nowrap">จัดการ</th></tr></thead><tbody></tbody></table></div>
                             </div>
                             <div class="tab-pane fade p-4" id="tabBorrowHistoryMain">
                                 <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
@@ -8823,9 +8823,12 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 if (borrows.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-success fw-bold"><i class="fas fa-check-circle fs-3 d-block mb-2"></i> ไม่มีรายการค้างส่งคืน</td></tr>'; return; }
                 borrows.forEach(b => { 
                     let tr = document.createElement('tr'); let safeName = String(b.itemName || '').replace(/'/g, "\\'"); let safeCode = String(b.itemCode || '').replace(/'/g, "\\'"); let safeReqId = String(b.reqId || '').replace(/'/g, "\\'");
-                    let actionBtn = currentUserProfile.role === 'admin' ? `<button class="btn btn-sm btn-info text-white fw-bold shadow-sm w-100" onclick="returnBorrowedItem('${safeReqId}', '${safeCode}', '${safeName}', ${b.qty})"><i class="fas fa-undo me-1"></i> กดรับคืน</button>` : `<span class="badge bg-warning text-dark px-3 py-2 w-100">รอส่งคืน</span>`;
-                    if (currentUserProfile.role === 'admin') actionBtn += `<button class="btn btn-sm btn-outline-warning fw-bold w-100 mt-1" onclick="rplFromBorrow('${safeReqId}')" title="ออกใบแทนพร้อมเติมข้อมูลจากรายการยืมนี้"><i class="fas fa-clone me-1"></i> ออกใบแทน</button>`;
-                    tr.innerHTML = `<td><small class="text-muted font-monospace bg-light px-2 py-1 rounded">${escapeHtml(b.date)}</small></td><td class="fw-bold text-dark">${escapeHtml(b.itemName)} <span class="badge bg-light text-secondary border font-monospace ms-2 fw-normal">${escapeHtml(b.itemCode)}</span></td><td><span class="badge bg-info bg-opacity-10 text-info px-2 py-1"><i class="fas fa-map-marker-alt me-1"></i> ${escapeHtml(b.machine)}</span></td><td class="text-center fw-bold text-danger fs-5">${formatNumber(b.qty)}</td><td class="fw-medium text-secondary"><i class="fas fa-user-tag me-1"></i> ${escapeHtml(b.borrower)}</td><td><small class="text-muted">${escapeHtml(b.remark)}</small></td><td class="text-center" style="width:140px;">${actionBtn}</td>`; tbody.appendChild(tr); 
+                    const isAdmin = currentUserProfile.role === 'admin';
+                    let actionBtn = isAdmin
+                        ? `<button class="btn btn-sm btn-info text-white fw-bold shadow-sm text-nowrap" onclick="returnBorrowedItem('${safeReqId}', '${safeCode}', '${safeName}', ${b.qty})"><i class="fas fa-undo me-1"></i>กดรับคืน</button><button class="btn btn-sm btn-outline-warning fw-bold text-nowrap" onclick="rplFromBorrow('${safeReqId}')" title="ออกใบแทนพร้อมเติมข้อมูลจากรายการยืมนี้"><i class="fas fa-clone me-1"></i>ออกใบแทน</button>`
+                        : `<span class="badge bg-warning text-dark px-3 py-2 text-nowrap">รอส่งคืน</span>`;
+                    const _dtParts = String(b.date || '-').trim().split(/\s+/); const _dPart = _dtParts[0] || '-'; const _tPart = _dtParts[1] || '';
+                    tr.innerHTML = `<td class="text-nowrap"><div class="fw-semibold font-monospace small">${escapeHtml(_dPart)}</div> <div class="text-muted font-monospace" style="font-size:.72rem;">${escapeHtml(_tPart)}</div></td><td><div class="fw-bold text-dark">${escapeHtml(b.itemName)}</div> <span class="badge bg-light text-secondary border font-monospace fw-normal mt-1">${escapeHtml(b.itemCode)}</span></td><td><span class="badge bg-info bg-opacity-10 text-info px-2 py-1 fw-medium text-wrap text-start"><i class="fas fa-map-marker-alt me-1"></i>${escapeHtml(b.machine)}</span></td><td class="text-center fw-bold text-danger fs-6">${formatNumber(b.qty)}</td><td class="fw-medium text-secondary"><i class="fas fa-user-tag me-1"></i>${escapeHtml(b.borrower)}</td><td><small class="text-muted">${escapeHtml(b.remark)}</small></td><td class="text-end text-nowrap"><div class="d-inline-flex gap-1 justify-content-end">${actionBtn}</div></td>`; tbody.appendChild(tr);
                 });
             } catch(e) { console.error(e); }
         }
@@ -8871,16 +8874,21 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" class="text-center py-5 text-muted"><i class="fas fa-inbox fs-3 d-block mb-2"></i> ไม่พบประวัติการยืม-คืน</td></tr>'; return; }
                 const badgeMap = { approved: 'bg-warning text-dark', returned: 'bg-success', pending: 'bg-info text-dark', rejected: 'bg-secondary' };
                 tbody.innerHTML = rows.map(b => `<tr>
-                    <td><small class="text-muted font-monospace bg-light px-2 py-1 rounded">${escapeHtml(b.borrowDate || '-')}</small></td>
-                    <td class="fw-bold text-dark">${escapeHtml(b.itemName)} <span class="badge bg-light text-secondary border font-monospace ms-1 fw-normal">${escapeHtml(b.itemCode)}</span></td>
+                    <td class="text-nowrap">${_histDateCell(b.borrowDate)}</td>
+                    <td><div class="fw-bold text-dark">${escapeHtml(b.itemName)}</div> <span class="badge bg-light text-secondary border font-monospace fw-normal mt-1">${escapeHtml(b.itemCode)}</span></td>
                     <td><small>${escapeHtml(b.machine || '-')}</small></td>
                     <td class="text-center fw-bold">${formatNumber(b.qty)}</td>
                     <td class="fw-medium text-secondary"><i class="fas fa-user-tag me-1"></i> ${escapeHtml(b.borrower)}</td>
                     <td class="text-center"><span class="badge ${badgeMap[b.status] || 'bg-light text-dark border'}">${escapeHtml(b.statusLabel || b.status)}</span></td>
-                    <td><small class="text-muted">${escapeHtml(b.returnedAt || '-')}</small></td>
+                    <td class="text-nowrap">${_histDateCell(b.returnedAt)}</td>
                     <td><small class="text-muted">${escapeHtml(b.remark || '')}</small></td>
                 </tr>`).join('');
             } catch(e) { console.error(e); }
+        }
+
+        function _histDateCell(s) {
+            const p = String(s || '-').trim().split(/\s+/);
+            return `<div class="fw-semibold font-monospace small">${escapeHtml(p[0] || '-')}</div> <div class="text-muted font-monospace" style="font-size:.72rem;">${escapeHtml(p[1] || '')}</div>`;
         }
 
         function clearBorrowHistDates() {
