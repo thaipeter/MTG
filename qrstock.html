@@ -377,15 +377,6 @@ body{display:flex;flex-direction:column}
 .mine-section.active{display:flex}
 .mine-list{flex:1;overflow-y:auto;padding:12px}
 .mine-empty{text-align:center;padding:48px 20px;color:var(--text3)}
-.mine-range{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:8px 12px 4px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm)}
-.mine-range i.fa-calendar-alt{color:var(--purple);font-size:13px}
-.mine-range input[type=date]{flex:1;min-width:112px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font:12px 'Sarabun',sans-serif;color-scheme:dark}
-.mine-range .mr-sep{color:var(--text3);font-size:12px}
-.mine-range button{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:6px 10px;font:12px 'Sarabun',sans-serif;cursor:pointer;display:none}
-.mine-range.on button{display:inline-block}
-.mine-range.on{border-color:var(--purple)}
-.mine-range .mr-cnt{flex-basis:100%;font-size:11px;color:var(--text3);display:none}
-.mine-range.on .mr-cnt{display:block}
 .mine-empty i{font-size:40px;margin-bottom:12px;display:block}
 .mine-empty p{font-size:13px}
 .hist-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px}
@@ -1296,28 +1287,12 @@ body{display:flex;flex-direction:column}
     <button class="mine-archive-btn" onclick="openArchiveHistory()">
       <i class="fas fa-search"></i> ค้นหา / กรองประวัติเก่า
     </button>
-    <div class="mine-range" data-mr>
-      <i class="fas fa-calendar-alt"></i>
-      <input type="date" data-mr-s onchange="mineRangeChange(this)" aria-label="ตั้งแต่วันที่">
-      <span class="mr-sep">ถึง</span>
-      <input type="date" data-mr-e onchange="mineRangeChange(this)" aria-label="ถึงวันที่">
-      <button type="button" onclick="mineRangeClear()">ล้าง</button>
-      <div class="mr-cnt" data-mr-cnt></div>
-    </div>
     <div class="mine-list" id="mineHistoryList">
       <div class="mine-empty"><i class="fas fa-history"></i><p>กำลังโหลด...</p></div>
     </div>
   </div>
   <!-- Active borrows section -->
   <div class="mine-section" id="mineSectionBorrow">
-    <div class="mine-range" data-mr>
-      <i class="fas fa-calendar-alt"></i>
-      <input type="date" data-mr-s onchange="mineRangeChange(this)" aria-label="ตั้งแต่วันที่">
-      <span class="mr-sep">ถึง</span>
-      <input type="date" data-mr-e onchange="mineRangeChange(this)" aria-label="ถึงวันที่">
-      <button type="button" onclick="mineRangeClear()">ล้าง</button>
-      <div class="mr-cnt" data-mr-cnt></div>
-    </div>
     <div class="mine-list" id="mineBorrowList">
       <div class="mine-empty"><i class="fas fa-clock"></i><p>กำลังโหลด...</p></div>
     </div>
@@ -4512,50 +4487,6 @@ function updateMineStats() {
 
 /* ══ จัดกลุ่มประวัติ "ของฉัน" ตามเดือน + สรุปจำนวนเบิกของแต่ละเดือน (เดือนนี้เน้นสี + เลขนับขึ้น) ══ */
 const _TH_MON = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
-/* ── ตัวกรองช่วงเวลา (ใช้ร่วมกันทั้งประวัติและยืมค้าง) ── */
-const mineRange = { s: '', e: '' };
-function _mineDayKey(o) {   // → 'YYYY-MM-DD' (เวลาไทย) หรือ ''
-  const t = Number(o.ts);
-  if (Number.isFinite(t) && t > 0) {
-    const d = new Date(t + 7 * 3600 * 1000);
-    return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
-  }
-  const p = String(o.date || o.borrowDate || '').split(/[\/\s]/);
-  if (p.length >= 3) {
-    let y = parseInt(p[2], 10); if (!(y > 0)) return '';
-    y = y >= 2500 ? y - 543 : (y > 100 ? y : (y > 43 ? y + 1957 : y + 2000));
-    return y + '-' + String(parseInt(p[1], 10)).padStart(2, '0') + '-' + String(parseInt(p[0], 10)).padStart(2, '0');
-  }
-  return '';
-}
-function _mineRangeOn() { return !!(mineRange.s || mineRange.e); }
-function _mineInRange(o) {
-  if (!_mineRangeOn()) return true;
-  const k = _mineDayKey(o);
-  if (!k) return false;
-  return (!mineRange.s || k >= mineRange.s) && (!mineRange.e || k <= mineRange.e);
-}
-function mineRangeChange(inp) {
-  const bar = inp.closest('[data-mr]');
-  mineRange.s = bar.querySelector('[data-mr-s]').value || '';
-  mineRange.e = bar.querySelector('[data-mr-e]').value || '';
-  if (mineRange.s && mineRange.e && mineRange.s > mineRange.e) { const t = mineRange.s; mineRange.s = mineRange.e; mineRange.e = t; }
-  mineRangeRerender();
-}
-function mineRangeClear() { mineRange.s = ''; mineRange.e = ''; mineRangeRerender(); }
-function mineRangeRerender() {
-  document.querySelectorAll('[data-mr]').forEach(b => {
-    b.querySelector('[data-mr-s]').value = mineRange.s;
-    b.querySelector('[data-mr-e]').value = mineRange.e;
-    b.classList.toggle('on', _mineRangeOn());
-  });
-  renderMineHistory();
-  renderMineBorrows();
-}
-function _mineRangeCount(sectionId, shown, total) {
-  const c = document.querySelector('#' + sectionId + ' [data-mr-cnt]');
-  if (c) c.textContent = 'แสดง ' + shown + ' จาก ' + total + ' รายการ';
-}
 function _mineMonthKey(h) {
   let t = Number(h.ts);
   if (!Number.isFinite(t) || t <= 0) {   // ไม่มี ts → อ่านจาก dd/mm/yy(พ.ศ.)
@@ -4741,13 +4672,7 @@ function archRenderRows() {
 
 function renderMineHistory() {
   const el = document.getElementById('mineHistoryList');
-  const _all = mineData.history;
-  const list = _all.filter(_mineInRange);
-  _mineRangeCount('mineSectionHistory', list.length, _all.length);
-  if (_mineRangeOn() && !list.length) {
-    el.innerHTML = '<div class="mine-empty"><i class="fas fa-calendar-times"></i><p>ไม่พบรายการในช่วงวันที่ที่เลือก</p></div>';
-    return;   // กรองอยู่ → ไม่ต่อประวัติเก่า
-  }
+  const list = mineData.history;
   if (!list.length) {
     el.innerHTML = '<div class="mine-empty"><i class="fas fa-history"></i><p>ยังไม่มีประวัติการทำรายการ</p></div>';
     _mineLoadArchiveInline();
@@ -4972,13 +4897,7 @@ function openReturnItemModal(code, name, maxQty, sourceRef) {
 
 function renderMineBorrows() {
   const el = document.getElementById('mineBorrowList');
-  const _all = mineData.borrows;
-  const list = _all.filter(_mineInRange);
-  _mineRangeCount('mineSectionBorrow', list.length, _all.length);
-  if (_mineRangeOn() && _all.length && !list.length) {
-    el.innerHTML = '<div class="mine-empty"><i class="fas fa-calendar-times"></i><p>ไม่พบรายการยืมในช่วงวันที่ที่เลือก</p></div>';
-    return;
-  }
+  const list = mineData.borrows;
   if (!list.length) {
     el.innerHTML = '<div class="mine-empty"><i class="fas fa-check-circle" style="color:var(--green)"></i><p>ไม่มีรายการยืมค้างอยู่ 🎉</p></div>';
     return;
