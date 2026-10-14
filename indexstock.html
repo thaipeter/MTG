@@ -4145,6 +4145,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             </div>
                             <button class="btn btn-sm" onclick="loadStockWeekCard()" style="background:#232838;color:#a0aec0;border:1px solid #2a2f3d;border-radius:8px"><i class="fas fa-sync me-1"></i> รีเฟรช</button>
                         </div>
+                        <div id="stWkReview"></div>
                         <div id="stWkBody"></div>
                     </div>
 
@@ -15492,6 +15493,64 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
         /* ══ STOCK TAKE MANAGEMENT (แอดมิน) ══ */
         let stMgmtState = { sessionId: null, items: [] };
 
+        // ★ คิวตรวจส่วนต่างจากการนับรายสัปดาห์ (แอดมิน): ปรับยอดตามที่นับ / เบิกย้อนหลัง / ปล่อยผ่าน
+        let _stWkReviewItems = [];
+        function _stWkAdminPayload(extra) {
+            return Object.assign({ role: currentUserProfile.role, userName: currentUserProfile.name, adminUid: currentUserProfile.userId || currentUserProfile.uid || '-' }, extra || {});
+        }
+        function loadCountReview() {
+            const box = document.getElementById('stWkReview'); if (!box) return;
+            callGAS('webCountGetReview', [_stWkAdminPayload()], function(res) {
+                if (!res || res.success === false) { box.innerHTML = ''; return; }
+                _stWkReviewItems = res.items || []; renderCountReview();
+            }, function() { box.innerHTML = ''; });
+        }
+        function renderCountReview() {
+            const box = document.getElementById('stWkReview'); if (!box) return;
+            const list = _stWkReviewItems;
+            if (!list.length) { box.innerHTML = ''; return; }
+            const btn = 'class="btn btn-sm fw-bold"';
+            const rows = list.map((r, i) => {
+                const col = r.diff < 0 ? '#ff7a85' : '#e8a020';
+                const first = (r.firstQty != null && r.firstQty !== r.countedQty) ? '<div class="small" style="color:#8d97a9">นับครั้งแรก ' + formatNumber(r.firstQty) + ' → ซ้ำ ' + formatNumber(r.countedQty) + '</div>' : '';
+                const retro = r.diff < 0 ? '<button ' + btn + ' style="background:#232837;color:#e6eaf2;border:1px solid #2a2f3d" onclick="stWkReviewAct(' + i + ',\'retro\')">เบิกย้อนหลัง</button>' : '';
+                return '<tr><td><div class="fw-bold text-white">' + escapeHtml(r.itemName) + '</div><div class="small" style="color:#8d97a9">' + escapeHtml(r.itemCode) + ' · ' + escapeHtml(r.countedBy || '-') + (r.reason ? ' · ' + escapeHtml(r.reason) : '') + '</div>' + first + '</td>' +
+                    '<td class="text-center">' + formatNumber(r.countedQty) + '</td><td class="text-center">' + formatNumber(r.systemQty) + '</td><td class="text-center fw-bold" style="color:' + col + '">' + (r.diff > 0 ? '+' : '') + formatNumber(r.diff) + '</td>' +
+                    '<td><div class="d-flex gap-1 flex-wrap justify-content-end"><button ' + btn + ' style="background:#e8a020;color:#1b1200" onclick="stWkReviewAct(' + i + ',\'adjust\')">ปรับยอดตามที่นับ</button>' + retro + '<button ' + btn + ' style="background:transparent;color:#b3bccb;border:1px solid #3a4054" onclick="stWkReviewAct(' + i + ',\'waive\')">ปล่อยผ่าน</button></div></td></tr>';
+            }).join('');
+            box.innerHTML = '<div class="mb-3" style="border:1px solid rgba(255,122,133,.4);border-radius:14px;overflow:hidden"><div class="px-3 py-2 d-flex justify-content-between align-items-center" style="background:rgba(255,122,133,.1)"><b style="color:#ff7a85"><i class="fas fa-exclamation-triangle me-2"></i>คิวตรวจส่วนต่าง ' + list.length + ' รายการ</b><span class="small" style="color:#8d97a9">ยอดในระบบยังไม่เปลี่ยนจนกว่าจะเลือกดำเนินการ</span></div>' +
+                '<div class="table-responsive"><table class="table table-dark table-sm align-middle mb-0" style="--bs-table-bg:transparent"><thead><tr><th>รายการ</th><th class="text-center">นับได้</th><th class="text-center">ระบบ</th><th class="text-center">ต่าง</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+        }
+        function stWkReviewAct(i, action) {
+            const r = _stWkReviewItems[i]; if (!r) return;
+            const send = function(remark) {
+                Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                callGAS('webCountReview', [_stWkAdminPayload({ weekId: r.weekId, itemCode: r.itemCode, action: action, remark: remark || '' })], function(res) {
+                    Swal.close();
+                    if (!res || res.success === false) { Swal.fire({ icon: 'error', title: 'ไม่สำเร็จ', text: String((res && res.error) || '') }); return; }
+                    if (action === 'retro') {
+                        stMgmtState.sessionId = r.weekId;
+                        try { switchStockTakeTab('diff'); } catch (e) {}
+                        openRetroWithdrawModal(r.itemCode, r.itemName, Math.abs(r.diff));
+                    } else {
+                        _stToast(action === 'adjust' ? 'ปรับยอดแล้ว' : 'ปล่อยผ่านแล้ว', 'ok');
+                    }
+                    loadStockWeekCard();
+                }, function(err) { Swal.close(); Swal.fire({ icon: 'error', title: 'ไม่สำเร็จ', text: String(err) }); });
+            };
+            const nm = escapeHtml(r.itemName), d = (r.diff > 0 ? '+' : '') + formatNumber(r.diff);
+            if (action === 'adjust') {
+                Swal.fire({ icon: 'question', title: 'ปรับยอดตามที่นับ?', html: nm + '<br>ปรับยอดในระบบ <b>' + d + '</b> ' + escapeHtml(r.unit || '') + '<br><small>(ระบบ ' + formatNumber(r.systemQty) + ' → นับได้ ' + formatNumber(r.countedQty) + ')</small>', showCancelButton: true, confirmButtonText: 'ปรับยอด', cancelButtonText: 'ยกเลิก' })
+                    .then(x => { if (x.isConfirmed) send(''); });
+            } else if (action === 'waive') {
+                Swal.fire({ title: 'ปล่อยผ่าน', html: nm + ' (ต่าง ' + d + ')', input: 'text', inputPlaceholder: 'เหตุผลที่ปล่อยผ่าน (จำเป็นต้องระบุ)', showCancelButton: true, confirmButtonText: 'ปล่อยผ่าน', cancelButtonText: 'ยกเลิก', inputValidator: v => (!v || !v.trim()) ? 'กรุณาระบุเหตุผล' : null })
+                    .then(x => { if (x.isConfirmed) send(x.value.trim()); });
+            } else {
+                Swal.fire({ icon: 'question', title: 'ส่งไปเบิกย้อนหลัง?', html: nm + ' ขาด ' + formatNumber(Math.abs(r.diff)) + '<br><small>จะเปิดหน้าเบิกย้อนหลังต่อให้ทันที</small>', showCancelButton: true, confirmButtonText: 'ไปต่อ', cancelButtonText: 'ยกเลิก' })
+                    .then(x => { if (x.isConfirmed) send(''); });
+            }
+        }
+
         // ★ การ์ดใบงานรายสัปดาห์ — เรียก Edge Function count-plan (เฉพาะแอดมิน)
         let _stWkData = null, _stWkFilter = 'all';
         function loadStockWeekCard() {
@@ -15543,6 +15602,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
 
         function loadStockTakeMgmt() {
             try { loadStockWeekCard(); } catch (e) { console.warn('loadStockWeekCard', e); }
+            try { loadCountReview(); } catch (e) { console.warn('loadCountReview', e); }
             const tbody = document.getElementById('stMgmtTableBody');
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4" style="color:#6b7280"><i class="fas fa-spinner fa-spin me-2"></i>กำลังโหลด...</td></tr>';
