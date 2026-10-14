@@ -2909,11 +2909,10 @@ function stHandleScan(code) {   // เรียกจาก handleQR หลั�
   }
   const p = getAllItems().find(x => x.code === code);
   if (!p) { showToast('ไม่พบรหัส ' + code, 'error'); if (stState.viaScan) setTimeout(() => openScanner('stocktake'), 600); return; }
-  Swal.fire(Object.assign({ icon: 'question', title: 'ไม่อยู่ในใบงานสัปดาห์นี้', text: p.name + ' — นับเพิ่มเป็นรายการพิเศษไหม?', confirmButtonText: 'นับเพิ่ม' }, dark)).then(r => {
-    if (!r.isConfirmed) { if (stState.viaScan) setTimeout(() => openScanner('stocktake'), 250); return; }
-    stState.items.push({ code: p.code, name: p.name, unit: p.unit || '', category: p.category || '', extra: true, status: 'pending', pickReason: 'นับเพิ่มนอกใบงาน', systemQty: stState.hideSystem ? null : Number(p.stock || 0) });
-    stOpen(p.code, true);
-  });
+  // ไม่อยู่ในใบงาน → นับเพิ่มได้ทันทีโดยไม่ต้องกดยืนยัน (ติดป้าย 'นับเพิ่มนอกใบงาน' ให้อัตโนมัติ)
+  stState.items.push({ code: p.code, name: p.name, unit: p.unit || '', category: p.category || '', extra: true, status: 'pending', pickReason: 'นับเพิ่มนอกใบงาน', systemQty: stState.hideSystem ? null : Number(p.stock || 0) });
+  showToast('นอกใบงาน — นับเพิ่มได้เลย', 'info');
+  stOpen(p.code, true);
 }
 
 /* ══ ITEMS ══ */
