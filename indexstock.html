@@ -4136,6 +4136,18 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         <button class="btn btn-sm" onclick="loadStockTakeMgmt()" style="background:#232838;color:#a0aec0;border:1px solid #2a2f3d;border-radius:8px"><i class="fas fa-sync me-1"></i> รีเฟรช</button>
                     </div>
 
+                    <!-- ★ ใบงานนับสต็อกรายสัปดาห์ (ระบบใหม่) — สัปดาห์นี้ + ตัวอย่างสัปดาห์หน้า -->
+                    <div id="stWeekCard" class="mb-4 p-3 p-md-4" style="background:#1b1f2a;border:1px solid #2a2f3d;border-radius:16px">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                            <div>
+                                <h5 class="fw-bold mb-0" style="color:#fff"><i class="fas fa-calendar-week me-2" style="color:#e8a020"></i>ใบงานนับสต็อกรายสัปดาห์</h5>
+                                <div id="stWkRange" style="font-size:.85rem;color:#8d97a9">กำลังโหลด...</div>
+                            </div>
+                            <button class="btn btn-sm" onclick="loadStockWeekCard()" style="background:#232838;color:#a0aec0;border:1px solid #2a2f3d;border-radius:8px"><i class="fas fa-sync me-1"></i> รีเฟรช</button>
+                        </div>
+                        <div id="stWkBody"></div>
+                    </div>
+
                     <ul class="nav nav-tabs mb-3" style="border-bottom:1px solid #2a2f3d">
                         <li class="nav-item">
                             <button class="nav-link active" id="stTabKeyBtn" onclick="switchStockTakeTab('key')" style="background:transparent;color:#e0e0e0;border:none;border-bottom:2px solid #f59e0b"><i class="fas fa-keyboard me-1"></i> คีย์ยอดนับ</button>
@@ -15480,7 +15492,57 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
         /* ══ STOCK TAKE MANAGEMENT (แอดมิน) ══ */
         let stMgmtState = { sessionId: null, items: [] };
 
+        // ★ การ์ดใบงานรายสัปดาห์ — เรียก Edge Function count-plan (เฉพาะแอดมิน)
+        let _stWkData = null, _stWkFilter = 'all';
+        function loadStockWeekCard() {
+            const body = document.getElementById('stWkBody'); if (!body) return;
+            body.innerHTML = '<div class="text-center py-4" style="color:#8d97a9"><i class="fas fa-spinner fa-spin me-2"></i>กำลังโหลดใบงาน...</div>';
+            fetch('https://qgcovpqrrnbcxddpfphh.supabase.co/functions/v1/count-plan', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: getSessionToken() })
+            }).then(r => r.json()).then(res => {
+                if (!res || !res.success) {
+                    if (res && res.sessionExpired) { try { localStorage.removeItem('sb_user_session'); clearSessionToken(); } catch (e) {} location.reload(); return; }
+                    body.innerHTML = '<div class="text-center py-4 text-danger">โหลดใบงานไม่สำเร็จ: ' + escapeHtml(String((res && res.error) || '')) + '</div>'; return;
+                }
+                _stWkData = res; renderStockWeekCard();
+            }).catch(e => { body.innerHTML = '<div class="text-center py-4 text-danger">โหลดใบงานไม่สำเร็จ: ' + escapeHtml(String(e)) + '</div>'; });
+        }
+        function stWkSetFilter(f) { _stWkFilter = f; renderStockWeekCard(); }
+        function _stWkFmtRange(a, b) {
+            const m = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+            const da = new Date(a + 'T00:00:00'), db = new Date(b + 'T00:00:00');
+            return da.getDate() + (da.getMonth() !== db.getMonth() ? ' ' + m[da.getMonth()] : '') + '–' + db.getDate() + ' ' + m[db.getMonth()];
+        }
+        function renderStockWeekCard() {
+            const d = _stWkData; const body = document.getElementById('stWkBody'); if (!d || !body) return;
+            const t = d.thisWeek, n = d.nextWeek;
+            const rg = document.getElementById('stWkRange');
+            if (rg) rg.textContent = 'สัปดาห์นี้ ' + _stWkFmtRange(t.weekStart, t.weekEnd) + ' · ' + (t.status === 'closed' ? 'ปิดรอบแล้ว' : 'เปิดอยู่') + ' · ' + d.limit + ' รายการ/สัปดาห์';
+            const pct = t.total ? Math.round(t.counted * 100 / t.total) : 0;
+            const stat = (label, val, color) => '<div class="col-6 col-md-3"><div style="background:#12151d;border:1px solid #2a2f3d;border-radius:12px;padding:10px 14px"><div style="font-size:.78rem;color:#8d97a9">' + label + '</div><div style="font-size:1.5rem;font-weight:800;color:' + color + '">' + val + '</div></div></div>';
+            const filters = [['all','ทั้งหมด'],['pending','ยังไม่นับ'],['counted','นับแล้ว'],['diff','มีส่วนต่าง']];
+            const match = it => _stWkFilter === 'all' ? true : _stWkFilter === 'pending' ? it.status !== 'counted' : _stWkFilter === 'counted' ? it.status === 'counted' : (it.status === 'counted' && it.diff !== 0);
+            const rows = t.items.filter(match).map(it => {
+                let st = '<span style="color:#8d97a9">ยังไม่นับ</span>';
+                if (it.status === 'recount') st = '<span style="color:#e8a020">รอนับซ้ำ</span>';
+                if (it.status === 'counted') st = it.diff === 0 ? '<span style="color:#22c55e"><i class="fas fa-check me-1"></i>ตรง ' + formatNumber(it.countedQty) + '</span>' : '<span style="color:#ff7a85">นับได้ ' + formatNumber(it.countedQty) + ' (' + (it.diff > 0 ? '+' : '') + formatNumber(it.diff) + ')</span>';
+                const rv = it.review === 'pending' ? ' <span class="badge" style="background:#3a1e1e;color:#ff7a85">รอตรวจ</span>' : '';
+                const ex = it.extra ? ' <span class="badge bg-secondary">นับเพิ่ม</span>' : '';
+                return '<tr><td class="text-muted small">' + it.seq + '</td><td><span class="fw-bold text-white">' + escapeHtml(it.name) + '</span> <span class="badge bg-dark border font-monospace fw-normal">' + escapeHtml(it.code) + '</span>' + ex + '<div class="small" style="color:#8d97a9">' + escapeHtml(it.category || '') + (it.pickReason ? ' · ' + escapeHtml(it.pickReason) : '') + '</div></td><td>' + st + rv + '</td><td class="small" style="color:#8d97a9">' + escapeHtml(it.countedBy || '') + '</td></tr>';
+            }).join('') || '<tr><td colspan="4" class="text-center py-4" style="color:#8d97a9">ไม่มีรายการในตัวกรองนี้</td></tr>';
+            const nrows = n.items.map(it => '<tr><td class="text-muted small">' + it.seq + '</td><td><span class="fw-bold text-white">' + escapeHtml(it.name) + '</span> <span class="badge bg-dark border font-monospace fw-normal">' + escapeHtml(it.code) + '</span></td><td class="small" style="color:#8d97a9">' + escapeHtml(it.category || '') + '</td><td class="small" style="color:#8d97a9">' + escapeHtml(it.pickReason || '') + '</td></tr>').join('');
+            body.innerHTML =
+                '<div class="progress mb-3" style="height:8px;background:#232838;border-radius:999px"><div class="progress-bar" style="width:' + pct + '%;background:#22c55e;border-radius:999px"></div></div>' +
+                '<div class="row g-2 mb-3">' + stat('นับแล้ว', t.counted + ' <span style="font-size:.9rem;color:#8d97a9;font-weight:500">/ ' + t.total + '</span>', '#e8a020') + stat('ค้างนับ', t.pending + t.recount, '#fff') + stat('ต่างจากระบบ', t.diffCount, t.diffCount ? '#ff7a85' : '#fff') + stat('รอแอดมินตรวจ', t.pendingReview, t.pendingReview ? '#ff7a85' : '#fff') + '</div>' +
+                '<div class="d-flex flex-wrap gap-2 mb-2">' + filters.map(f => '<button class="st-chip" style="' + (_stWkFilter === f[0] ? 'background:#e8a020;color:#1b1200;border-color:#e8a020' : '') + '" onclick="stWkSetFilter(\'' + f[0] + '\')">' + f[1] + '</button>').join('') + '</div>' +
+                '<div class="table-responsive" style="max-height:360px;overflow:auto;border:1px solid #2a2f3d;border-radius:12px"><table class="table table-dark table-sm align-middle mb-0" style="--bs-table-bg:transparent"><thead style="position:sticky;top:0;background:#1b1f2a"><tr><th style="width:44px">#</th><th>รายการ</th><th>สถานะ</th><th>ผู้นับ</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+                '<div class="mt-3"><button class="btn btn-sm w-100 text-start" data-bs-toggle="collapse" data-bs-target="#stWkNext" style="background:#12151d;color:#e6eaf2;border:1px solid #2a2f3d;border-radius:12px;padding:10px 14px"><i class="fas fa-forward me-2" style="color:#e8a020"></i><b>สัปดาห์หน้า ' + _stWkFmtRange(n.weekStart, n.weekEnd) + '</b> · ' + (n.existing ? 'สร้างใบงานแล้ว' : 'ตัวอย่าง (ยังไม่ได้สร้างจริง)') + ' · ' + n.total + ' รายการ' + (n.carryOver ? ' (ยกมาจากสัปดาห์นี้ ' + n.carryOver + ')' : '') + '</button>' +
+                '<div class="collapse" id="stWkNext"><div class="small my-2" style="color:#8d97a9">' + (n.existing ? 'ใบงานนี้ถูกสร้างแล้ว' : 'ใบงานจริงสร้างอัตโนมัติทุกวันจันทร์ 00:05 น. รายการอาจเปลี่ยนได้ตามการเบิกและการนับที่เกิดขึ้นก่อนถึงวันนั้น') + '</div><div class="table-responsive" style="max-height:320px;overflow:auto;border:1px solid #2a2f3d;border-radius:12px"><table class="table table-dark table-sm align-middle mb-0" style="--bs-table-bg:transparent"><thead style="position:sticky;top:0;background:#1b1f2a"><tr><th style="width:44px">#</th><th>รายการ</th><th>หมวด</th><th>เหตุผลที่ถูกเลือก</th></tr></thead><tbody>' + nrows + '</tbody></table></div></div></div>';
+        }
+
         function loadStockTakeMgmt() {
+            try { loadStockWeekCard(); } catch (e) { console.warn('loadStockWeekCard', e); }
             const tbody = document.getElementById('stMgmtTableBody');
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4" style="color:#6b7280"><i class="fas fa-spinner fa-spin me-2"></i>กำลังโหลด...</td></tr>';
