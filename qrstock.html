@@ -1270,7 +1270,7 @@ body{display:flex;flex-direction:column}
   <!-- Sub tabs -->
   <div class="mine-sub-tabs">
     <button class="mine-sub-tab active" id="mineSubHistory" onclick="switchMineSub('history')">
-      <i class="fas fa-history"></i> ประวัติการเบิก
+      <i class="fas fa-history"></i> ประวัติ
     </button>
     <button class="mine-sub-tab" id="mineSubBorrow" onclick="switchMineSub('borrow')">
       <i class="fas fa-clock"></i> ยืมค้างอยู่ (<span id="mineBorrowCount">0</span>)
@@ -4688,6 +4688,17 @@ function renderMineHistory() {
         + `<div style="display:none;width:64px;height:64px;border-radius:10px;background:rgba(255,255,255,.06);align-items:center;justify-content:center;flex-shrink:0;font-size:20px">${h.type==='เบิก'?'📦':h.type==='รับเข้า'?'📥':h.type==='คืน'?'↩️':h.type==='แจ้งชำรุด'?'⚠️':'🔧'}</div>`
       : `<div style="width:64px;height:64px;border-radius:10px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px">${h.type==='เบิก'?'📦':h.type==='รับเข้า'?'📥':h.type==='คืน'?'↩️':h.type==='แจ้งชำรุด'?'⚠️':'🔧'}</div>`;
       
+    if (h.type === 'รับเข้า') {   // รายการรับเข้า: การ์ดเรียบๆ ไม่มีปุ่มคืน/ใบเบิก
+      return `<div class="hist-card" style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;margin-bottom:8px">
+        ${imgHtml}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;color:#fff;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(h.itemName)}</div>
+          <div style="font-size:.75rem;color:rgba(255,255,255,.45);margin-top:2px">${esc(h.itemCode)} • +${esc(h.qty)}${h.unit?' '+esc(h.unit):''} • ${h.date}</div>
+          ${h.remark && h.remark!=='-' ? `<div style="font-size:.72rem;color:rgba(255,255,255,.3);margin-top:3px">📝 ${esc(h.remark)}</div>` : ''}
+        </div>
+        <span style="flex-shrink:0;font-size:.7rem;font-weight:700;padding:4px 10px;border-radius:20px;background:${color}22;color:${color};border:1px solid ${color}55">รับเข้า</span>
+      </div>`;
+    }
     const escName = esc(h.itemName).replace(/'/g, "\\'");
     const escCode = esc(h.itemCode).replace(/'/g, "\\'");
     const escQty = esc(h.qty).replace(/'/g, "\\'");
