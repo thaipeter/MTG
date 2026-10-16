@@ -2063,8 +2063,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         </div>
                         <div class="mb-2">
                             <label class="form-label text-muted small fw-bold"><i class="fas fa-file-pdf text-danger me-1"></i> เอกสารแนบ (ใบ PO PDF)</label>
-                            <input type="file" class="form-control shadow-sm" id="poPdfFile" accept="application/pdf">
-                            <div class="form-text small text-muted"><i class="fas fa-info-circle"></i> รองรับไฟล์ PDF ขนาดไม่เกิน 10MB</div>
+                            <input type="file" class="form-control shadow-sm" id="poPdfFile" accept="application/pdf" onchange="poAutoFillFromPdf(this)">
+                            <div class="form-text small text-muted"><i class="fas fa-info-circle"></i> รองรับไฟล์ PDF ขนาดไม่เกิน 10MB · เลือกไฟล์แล้วระบบจะกรอกเลขที่ PO วันที่ ซัพพลายเออร์ และรายการสินค้าให้อัตโนมัติ (ตรวจสอบก่อนบันทึก)</div>
                         </div>
                     </form>
                 </div>
@@ -10145,6 +10145,166 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                     } else { setTimeout(() => { document.getElementById('loading').style.display = 'none'; Swal.fire({icon: 'success', title: 'สำเร็จ!', text: 'รับคืนสำเร็จ! ยอดอัปเดตกลับเข้าคลังเรียบร้อย', timer: 2000, showConfirmButton: false}); }, 500); }
                 }
             });
+        }
+
+        // ★ อ่านใบ PO (PDF) แล้วกรอกฟอร์ม "เปิด PO ตกค้าง" ให้อัตโนมัติ — อ่านในเบราว์เซอร์ของผู้ใช้เอง ไม่ส่งไฟล์ไปที่อื่น
+        function _poFixThai(s) {
+            return String(s || '')
+                .replace(/ํ\s*า/g, 'ำ')                  // ํ + า → ำ
+                .replace(/\s+([ัิ-ฺ็-๎])/g, '$1') // ไม่มีช่องว่างก่อนสระ/วรรณยุกต์
+                .replace(/[ \t]+/g, ' ').trim();
+        }
+        function _poNum(s) { const n = parseFloat(String(s).replace(/,/g, '')); return isFinite(n) ? n : NaN; }
+
+        // lines: ข้อความของหน้าใบ PO แยกเป็นบรรทัด (ทดสอบแยกได้ ไม่พึ่ง DOM)
+        function poParseLines(rawLines) {
+            const lines = rawLines.map(_poFixThai).filter(Boolean);
+            const out = { poCode: '', date: '', supplier: '', remark: '', items: [], skipped: 0 };
+            const all = lines.join('\n');
+
+            let m = all.match(/เลขที.{0,3}เอกสาร[^\n]*?(PO[\w\-\/.]*\d[\w\-\/.]*)/i) || all.match(/\b(PO\d[\w\-\/.]*)/i);
+            if (m) out.poCode = m[1].trim();
+
+            // วันที่: บรรทัดที่มีคำว่า Date (ไม่ใช่ DUEDATE) — บางไฟล์เลขที่ PO ซ้อนติดกับวันที่ในบรรทัดเดียวกัน จึงหาเฉพาะรูปแบบ วว/ดด/ปปปป
+            for (const l of lines) {
+                if (!/Date/i.test(l) || /DUE\s*DATE/i.test(l)) continue;
+                const d = l.match(/(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{4})/);
+                if (d) {
+                    let y = parseInt(d[3], 10); if (y > 2400) y -= 543;
+                    out.date = y + '-' + String(d[2]).padStart(2, '0') + '-' + String(d[1]).padStart(2, '0');
+                    break;
+                }
+            }
+
+            for (const l of lines) {
+                const s = l.match(/ชื.{0,2}อลูกค้า\s*[:：]\s*(.+)/);
+                if (s) {
+                    out.supplier = s[1].replace(/\s*(วันที|Date).*$/i, '').trim();
+                    break;
+                }
+            }
+
+            m = all.match(/อ้างอิงใบเสนอราคา[^\n]*?([A-Za-z]{1,4}\d[\w\-\/.]*)/);
+            if (m) out.remark = 'อ้างอิงใบเสนอราคา ' + m[1];
+
+            // ตารางสินค้า: เริ่มหลังบรรทัดหัวตาราง (รหัสสินค้า … Name) จนถึง หมายเหตุ / รวมจำนวนเงิน
+            let start = lines.findIndex(l => /รหัสสินค้า/.test(l));
+            if (start >= 0) {
+                if (lines[start + 1] && /Code/i.test(lines[start + 1])) start += 1;
+                let prev = null;
+                for (let i = start + 1; i < lines.length; i++) {
+                    const l = lines[i];
+                    if (/^หมายเหตุ|รวมจำนวนเงิน|ราคาสินค้า\s*\//.test(l)) break;
+                    const tok = l.split(' ');
+                    const nums = [];
+                    for (let k = tok.length - 1; k >= 0 && /^[\d,]+(\.\d+)?$/.test(tok[k]); k--) nums.unshift(tok[k]);
+                    if (nums.length >= 3 && tok.length - nums.length >= 2) {
+                        const qty = _poNum(nums.length >= 4 ? nums[nums.length - 4] : nums[nums.length - 3]);
+                        const head = tok.slice(0, tok.length - nums.length);
+                        const name = head.slice(1, head.length > 2 ? head.length - 1 : head.length).join(' ').trim();   // ตัดรหัสหน้า + หน่วยท้าย
+                        prev = { name, qty };
+                        out.items.push(prev);
+                    } else if (prev && l.length > 0 && nums.length === 0) {
+                        prev.name = (prev.name + ' ' + l).trim();   // ชื่อที่ขึ้นบรรทัดใหม่
+                    }
+                }
+                const before = out.items.length;
+                out.items = out.items.filter(it => it.name && isFinite(it.qty) && it.qty > 0 && !/^ค่า/.test(it.name));
+                out.skipped = before - out.items.length;
+            }
+            return out;
+        }
+
+        function _poLoadPdfJs() {
+            if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+            return new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                s.onload = () => {
+                    try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; } catch (e) {}
+                    resolve(window.pdfjsLib);
+                };
+                s.onerror = () => reject(new Error('โหลดตัวอ่าน PDF ไม่ได้ (เช็คอินเทอร์เน็ต)'));
+                document.head.appendChild(s);
+            });
+        }
+
+        // หน้าที่เป็นใบสั่งซื้อ (PO) — ข้ามหน้าใบเสนอราคาที่แนบมา
+        async function poPageLines(pdf, pageNo) {
+            const page = await pdf.getPage(pageNo);
+            const tc = await page.getTextContent();
+            const rows = [];
+            tc.items.forEach(it => {
+                if (!it.str || !it.str.trim()) return;
+                const x = it.transform[4], y = it.transform[5];
+                let r = rows.find(r => Math.abs(r.y - y) < 3);
+                if (!r) { r = { y, items: [] }; rows.push(r); }
+                r.items.push({ x, w: it.width || 0, s: it.str });
+            });
+            rows.sort((a, b) => b.y - a.y);
+            return rows.map(r => {
+                r.items.sort((a, b) => a.x - b.x);
+                let line = '', end = null;
+                r.items.forEach(it => { line += (end !== null && it.x - end > 1.5 ? ' ' : '') + it.s; end = it.x + it.w; });
+                return line;
+            });
+        }
+
+        async function poAutoFillFromPdf(input) {
+            const file = input && input.files && input.files[0];
+            if (!file) return;
+            if (file.type && file.type !== 'application/pdf') return;
+            const toast = (icon, title) => Swal.fire({ toast: true, position: 'top-end', icon, title, showConfirmButton: false, timer: 4500, timerProgressBar: true });
+            try {
+                Swal.fire({ title: 'กำลังอ่านใบ PO...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                const lib = await _poLoadPdfJs();
+                const pdf = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+                let chosen = null, anyText = false;
+                for (let p = 1; p <= Math.min(pdf.numPages, 6); p++) {
+                    const lines = await poPageLines(pdf, p);
+                    if (lines.length) anyText = true;
+                    const txt = lines.join(' ');
+                    if (/PURCHASE\s*ORDER/i.test(txt) || /ใบสั.{0,3}งซื.{0,3}อ/.test(txt)) { chosen = lines; break; }
+                    if (!chosen && p === 1) chosen = lines;
+                }
+                Swal.close();
+                if (!anyText) return toast('warning', 'ไฟล์นี้เป็นภาพสแกน อ่านอัตโนมัติไม่ได้ กรุณากรอกเอง');
+                const r = poParseLines(chosen || []);
+                if (!r.poCode && !r.supplier && !r.items.length) return toast('warning', 'อ่านข้อมูลจากไฟล์นี้ไม่ได้ กรุณากรอกเอง');
+
+                const rowsNow = Array.from(document.querySelectorAll('#poItemsBody tr'));
+                const hasTyped = rowsNow.some(tr => (tr.querySelector('.poItemName')?.value || '').trim() || (tr.querySelector('.poItemQty')?.value || '').trim());
+                let replaceItems = true;
+                if (hasTyped && r.items.length) {
+                    const c = await Swal.fire({ icon: 'question', title: 'แทนที่รายการสินค้าเดิม?', text: 'ในฟอร์มมีรายการที่กรอกไว้แล้ว', showCancelButton: true, confirmButtonText: 'แทนที่', cancelButtonText: 'เก็บของเดิม' });
+                    replaceItems = c.isConfirmed;
+                }
+                if (r.poCode) document.getElementById('poCode').value = r.poCode;
+                if (r.date) document.getElementById('poDate').value = r.date;
+                if (r.supplier) document.getElementById('poSupplier').value = r.supplier;
+                const rm = document.getElementById('poRemark');
+                if (r.remark && rm && !rm.value.trim()) rm.value = r.remark;
+                if (r.items.length && replaceItems) {
+                    document.getElementById('poItemsBody').innerHTML = '';
+                    r.items.forEach(it => {
+                        addPOItemRow();
+                        const tr = document.getElementById('poItemsBody').lastElementChild;
+                        tr.querySelector('.poItemName').value = it.name;
+                        tr.querySelector('.poItemQty').value = it.qty;
+                    });
+                }
+                const miss = [];
+                if (!r.poCode) miss.push('เลขที่ PO');
+                if (!r.date) miss.push('วันที่');
+                if (!r.supplier) miss.push('ซัพพลายเออร์');
+                if (!r.items.length) miss.push('รายการสินค้า');
+                if (miss.length) toast('warning', 'อ่านไม่ได้: ' + miss.join(', ') + ' — กรุณากรอกเอง');
+                else toast('success', 'กรอกจากใบ PO แล้ว' + (r.skipped ? ' (ข้ามค่าบริการ ' + r.skipped + ' บรรทัด)' : '') + ' ตรวจสอบก่อนบันทึก');
+            } catch (e) {
+                try { Swal.close(); } catch (x) {}
+                console.warn('poAutoFillFromPdf', e);
+                toast('warning', 'อ่านไฟล์ไม่สำเร็จ: ' + (e && e.message ? e.message : e) + ' — กรุณากรอกเอง');
+            }
         }
 
         function openAddPOModal() { 
