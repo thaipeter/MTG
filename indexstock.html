@@ -8834,7 +8834,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             card.style.cssText = 'background:#20242f;border-radius:10px;padding:14px;border:1px solid #2a2f3d;cursor:pointer;position:relative;transition:border-color .15s';
                             card.onmouseenter = () => card.style.borderColor = '#3b4254';
                             card.onmouseleave = () => card.style.borderColor = '#2a2f3d';
-                            card.onclick = () => openEditPOModal(p.poCode);
+                            card.onclick = () => openPOInfo(p.poCode);
                             card.innerHTML = `
                                 <i class="fas fa-chevron-right" style="position:absolute;top:14px;right:14px;color:#6b7280;font-size:11px"></i>
                                 <div class="d-flex justify-content-between align-items-start mb-2" style="padding-right:20px">
@@ -9101,7 +9101,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         card.style.cssText = 'background:#20242f;border-radius:10px;padding:14px;border:1px solid #2a2f3d;cursor:pointer;position:relative;transition:border-color .15s';
                         card.onmouseenter = () => card.style.borderColor = '#3b4254';
                         card.onmouseleave = () => card.style.borderColor = '#2a2f3d';
-                        card.onclick = () => openEditPOModal(po.poCode);
+                        card.onclick = () => openPOInfo(po.poCode);
                         card.innerHTML = `
                             <i class="fas fa-chevron-right" style="position:absolute;top:14px;right:14px;color:#6b7280;font-size:11px"></i>
                             <div class="d-flex justify-content-between align-items-start mb-2" style="padding-right:20px">
@@ -10478,6 +10478,43 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
         }
         
         // ฟังก์ชันแก้ไข/ติดตาม PO
+        // ★ ป๊อปอัพดูรายละเอียด PO (อ่านอย่างเดียว) — กดแก้ไข/รับเข้าได้จากในนี้
+        function openPOInfo(poCode) {
+            const items = (allData.pendingPOs || []).filter(p => p.poCode === poCode);
+            if (!items.length) return Swal.fire({ icon: 'error', title: 'ไม่พบ PO นี้' });
+            const f = items[0];
+            const isAdmin = currentUserProfile && currentUserProfile.role === 'admin';
+            const st = String(f.status || 'รอจัดส่ง');
+            const cancelled = st.includes('ยกเลิก');
+            const stColor = cancelled || st === 'ของขาดชั่วคราว' ? ['#ef4444', '#3a1e1e'] : st === 'กำลังผลิต' ? ['#60a5fa', '#1e3a5f'] : st === 'ได้รับแล้ว' ? ['#34d399', '#12332a'] : ['#f59e0b', '#3a2f1e'];
+            const badge = (t, c) => `<span style="background:${c[1]};color:${c[0]};font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap">${escapeHtml(t)}</span>`;
+            const totalQty = items.reduce((s, i) => s + (parseFloat(i.qty) || 0), 0);
+            const row = (label, val) => `<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #2a2f3d"><div style="width:96px;flex:none;color:#8b93a7">${label}</div><div style="flex:1;color:#e8eaf0;word-break:break-word">${val}</div></div>`;
+            const itemRows = items.map(i => `<tr style="border-top:1px solid #2a2f3d"><td style="padding:7px 8px;color:#e8eaf0">${escapeHtml(i.itemName)}</td><td style="padding:7px 8px;text-align:center;font-weight:700;color:#fff">${formatNumber(i.qty)}</td><td style="padding:7px 8px;text-align:right">${badge(i.status || 'รอจัดส่ง', (i.status === 'ได้รับแล้ว') ? ['#34d399', '#12332a'] : (i.status === 'กำลังผลิต') ? ['#60a5fa', '#1e3a5f'] : (i.status === 'ของขาดชั่วคราว') ? ['#ef4444', '#3a1e1e'] : ['#f59e0b', '#3a2f1e'])}</td></tr>`).join('');
+            const file = f.fileUrl ? `<a href="${escapeHtml(f.fileUrl)}" target="_blank" rel="noopener" style="color:#f87171;text-decoration:none"><i class="fas fa-file-pdf me-1"></i>เปิดไฟล์ PO (PDF)</a>` : '<span style="color:#6b7280">ไม่มีไฟล์แนบ</span>';
+            const html = `<div style="text-align:left;font-size:14px">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+                    <span class="font-monospace" style="background:#232838;color:#fff;font-size:15px;font-weight:700;padding:4px 10px;border-radius:6px">${escapeHtml(poCode)}</span>${badge(st, stColor)}</div>
+                ${row('วันที่สั่ง', escapeHtml(f.date || '-'))}
+                ${row('ซัพพลายเออร์', escapeHtml(f.supplier || '-'))}
+                ${row('หมายเหตุ', f.remark ? escapeHtml(f.remark) : '<span style="color:#6b7280">-</span>')}
+                ${row('ไฟล์แนบ', file)}
+                <div style="margin:14px 0 6px;color:#8b93a7">รายการสินค้า ${items.length} รายการ · รวม ${formatNumber(totalQty)}</div>
+                <div style="background:#1a1e29;border-radius:10px;max-height:240px;overflow:auto">
+                  <table style="width:100%;font-size:13px;border-collapse:collapse"><thead><tr style="color:#8b93a7"><th style="padding:7px 8px;text-align:left;font-weight:500">ชื่อ</th><th style="padding:7px 8px;font-weight:500">จำนวน</th><th style="padding:7px 8px;text-align:right;font-weight:500">สถานะ</th></tr></thead><tbody>${itemRows}</tbody></table>
+                </div></div>`;
+            const canAct = isAdmin && !cancelled;
+            Swal.fire({
+                title: 'รายละเอียด PO', html, width: 560, background: '#20242f', color: '#fff',
+                showConfirmButton: canAct, confirmButtonText: '<i class="fas fa-edit"></i> แก้ไข',
+                showDenyButton: canAct, denyButtonText: '<i class="fas fa-check"></i> รับเข้า',
+                showCancelButton: true, cancelButtonText: 'ปิด', confirmButtonColor: '#2563eb', denyButtonColor: '#16a34a'
+            }).then(r => {
+                if (r.isConfirmed) openEditPOModal(poCode);
+                else if (r.isDenied) receivePO(poCode);
+            });
+        }
+
         function openEditPOModal(poCode) {
             if (currentUserProfile.role !== 'admin') return Swal.fire({icon: 'error', title: 'ปฏิเสธการเข้าถึง', text: 'สิทธิ์การใช้งานไม่เพียงพอ! (เฉพาะ Admin เท่านั้น)'});
             
