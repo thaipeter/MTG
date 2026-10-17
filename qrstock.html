@@ -3746,7 +3746,9 @@ function tvPick(input) {
           return { id: Date.now() + i, canvas: srcCanvas, name: it.name, category: it.category || '', qty: it.qty || 1, unit: it.unit || 'อัน', box: it.box, conf: it.confidence,
                    thumb: it.box ? tvCrop(srcCanvas, it.box) : '', include: !dup, dupOf: dup };
         });
-        tvRows = append ? tvRows.concat(fresh) : fresh;
+        const before = (append ? tvRows.length : 0) + fresh.length;
+        tvRows = tvMergeSame(append ? tvRows.concat(fresh) : fresh);
+        if (tvRows.length < before) showToast('รวมรายการชื่อเหมือนกัน ' + (before - tvRows.length) + ' แถว เป็นจำนวนเดียว', 'success');
         tvNote = (res && res.note) || '';
         tvRender();
       }, err => { if (!append) tvCanvas = null; back(String(err || 'วิเคราะห์ไม่สำเร็จ')); });
@@ -3757,6 +3759,21 @@ function tvPick(input) {
 }
 let tvNote = '';
 
+// รายการชื่อเหมือนกัน → รวมเป็นแถวเดียว บวกจำนวนเพิ่ม (รูปครอปใช้ของแถวแรก)
+function tvMergeSame(list) {
+  const out = [], seen = new Map();
+  list.forEach(r => {
+    const k = tvNorm(r.name);
+    if (!k) { out.push(r); return; }
+    const first = seen.get(k);
+    if (!first) { seen.set(k, r); out.push(r); return; }
+    first.qty = (parseInt(first.qty, 10) || 0) + (parseInt(r.qty, 10) || 0);
+    if (r.conf === 'low') first.conf = 'low';
+    if (!first.thumb && r.thumb) { first.thumb = r.thumb; first.box = r.box; first.canvas = r.canvas; }
+    first.include = first.include || r.include;
+  });
+  return out;
+}
 function tvNorm(s) { return String(s || '').toLowerCase().replace(/\s+/g, ''); }
 function tvExistingNames() {
   const m = new Map();
@@ -3848,6 +3865,13 @@ function tvShowBox(i) {
 
 async function tvSave() {
   if (tvBusy) return;
+  const merged = tvMergeSame(tvRows);
+  if (merged.length < tvRows.length) {
+    const n = tvRows.length - merged.length;
+    tvRows = merged; tvRender();
+    showToast('รวมรายการชื่อเหมือนกัน ' + n + ' แถว เป็นจำนวนเดียวแล้ว ตรวจจำนวนแล้วกดบันทึกอีกครั้ง', 'success');
+    return;
+  }
   const rows = tvRows.filter(r => r.include);
   if (!rows.length) { showToast('ยังไม่ได้เลือกรายการที่จะบันทึก', 'error'); return; }
   const names = new Set();
