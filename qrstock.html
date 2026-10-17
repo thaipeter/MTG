@@ -3759,7 +3759,7 @@ function tvPick(input) {
         const fresh = list.map((it, i) => {
           const full = [it.name, it.size, it.brand].map(x => String(x || '').trim()).filter(Boolean).join(' ');
           const dupO = existing.get(tvNorm(full)), dup = dupO ? dupO.name : '';
-          return { id: Date.now() + i, canvas: srcCanvas, name: it.name, size: it.size || '', brand: it.brand || '', addTo: '', dupCode: dupO ? dupO.code : '', category: tvMatchCat(it.category), qty: it.qty || 1, unit: it.unit || 'อัน', box: it.box, conf: it.confidence,
+          return { id: Date.now() + i, canvas: srcCanvas, name: full, size: '', brand: '', addTo: '', dupCode: dupO ? dupO.code : '', category: tvMatchCat(it.category), qty: it.qty || 1, unit: it.unit || 'อัน', box: it.box, conf: it.confidence,
                    thumb: it.box ? tvCrop(srcCanvas, it.box) : '', include: !dup, dupOf: dup };
         });
         const before = (append ? tvRows.length : 0) + fresh.length;
@@ -3849,11 +3849,7 @@ function tvRender() {
       '<div style="flex:none;display:flex;flex-direction:column;gap:6px;align-items:center">' + thumb +
         (r.thumb ? '<button onclick="tvDropThumb(' + i + ')" style="background:none;border:0;color:var(--text2);font-size:10px">ลบรูป</button>' : '') + '</div>' +
       '<div style="flex:1;min-width:0">' +
-        '<input ' + inp + ' value="' + esc(r.name) + '" placeholder="ชนิด เช่น ประแจแหวนข้างปากตาย" oninput="tvSet(' + i + ',\'name\',this.value)">' +
-        '<div style="display:flex;gap:6px;margin-top:6px">' +
-          '<input ' + inp + ' value="' + esc(r.size) + '" placeholder="ขนาด" style="flex:1;min-width:0;width:auto;box-sizing:border-box" oninput="tvSet(' + i + ',\'size\',this.value)">' +
-          '<input ' + inp + ' value="' + esc(r.brand) + '" placeholder="ยี่ห้อ" style="flex:1.4;min-width:0;width:auto;box-sizing:border-box" oninput="tvSet(' + i + ',\'brand\',this.value)">' +
-        '</div>' +
+        '<input ' + inp + ' value="' + esc(r.name) + '" placeholder="ชื่อรายการ เช่น ประแจแหวนข้างปากตาย 13 FIXMAN" oninput="tvSet(' + i + ',\'name\',this.value)">' +
         '<div style="display:flex;gap:6px;margin-top:6px">' +
           tvCatSelect(i, r.category) +
           '<input class="ni-input text-center" type="number" min="0" value="' + r.qty + '" style="flex:none;width:58px;box-sizing:border-box;padding-left:4px;padding-right:4px;color:var(--green);font-weight:700" oninput="tvSet(' + i + ',\'qty\',this.value)">' +
