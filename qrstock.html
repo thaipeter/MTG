@@ -1049,6 +1049,7 @@ body{display:flex;flex-direction:column}
   <div class="newitem-form" id="newitemForm">
     <div class="ni-section-title"><i class="fas fa-plus-circle"></i> ขึ้นทะเบียนรายการใหม่</div>
     <button class="ni-upload-btn" onclick="tvOpen()" style="width:100%;margin-bottom:14px;background:rgba(167,139,250,.15);border-color:#a78bfa;color:#c4b5fd"><i class="fas fa-camera"></i> ถ่ายรูปให้ AI ช่วยร่างรายการเครื่องมือ</button>
+    <button class="ni-upload-btn" onclick="ckOpen()" style="width:100%;margin-bottom:14px;background:rgba(52,211,153,.12);border-color:#34d399;color:#6ee7b7"><i class="fas fa-clipboard-check"></i> ตรวจเครื่องมือด้วยรูป (เทียบกับในระบบ)</button>
 
     <!-- ประเภท + หมวดหมู่ -->
     <div class="ni-row">
@@ -1157,6 +1158,19 @@ body{display:flex;flex-direction:column}
   <div id="tvBar" style="display:none;position:fixed;left:0;right:0;bottom:0;padding:10px 14px;background:linear-gradient(135deg,#7c3aed,#5b21b6);align-items:center;gap:10px">
     <div id="tvBarText" style="flex:1;color:#fff;font-size:13px"></div>
     <button id="tvSaveBtn" onclick="tvSave()" style="background:#fff;color:#7c3aed;font-weight:700;border:0;border-radius:10px;padding:9px 16px"><i class="fas fa-save"></i> บันทึกทั้งหมด</button>
+  </div>
+</div>
+
+<!-- ── ตรวจเครื่องมือด้วยรูป (แอดมิน) ── -->
+<div id="ckOverlay" style="display:none;position:fixed;inset:0;z-index:900;background:var(--bg);flex-direction:column">
+  <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--surface2);background:var(--surface)">
+    <button onclick="ckClose()" style="background:none;border:0;color:var(--text);font-size:18px"><i class="fas fa-arrow-left"></i></button>
+    <div style="flex:1;font-weight:700;color:#fff"><i class="fas fa-clipboard-check me-1" style="color:#34d399"></i> ตรวจเครื่องมือด้วยรูป</div>
+  </div>
+  <div id="ckBody" style="flex:1;overflow-y:auto;padding:14px 14px 100px"></div>
+  <div id="ckBar" style="display:none;position:fixed;left:0;right:0;bottom:0;padding:10px 14px;background:linear-gradient(135deg,#059669,#047857);align-items:center;gap:10px">
+    <div id="ckBarText" style="flex:1;color:#fff;font-size:13px"></div>
+    <button id="ckSaveBtn" onclick="ckSave()" style="background:#fff;color:#047857;font-weight:700;border:0;border-radius:10px;padding:9px 16px"><i class="fas fa-save"></i> บันทึกผลตรวจ</button>
   </div>
 </div>
 
@@ -3969,6 +3983,147 @@ function tvPrefix(cat) {
   });
   const keys = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]);
   return (keys[0] || def).replace(/-+$/, '');
+}
+
+/* ══ ตรวจเครื่องมือด้วยรูป (แอดมิน): ถ่ายรูป → AI นับ → เทียบกับรายการในระบบ ══ */
+let ckItems = [], ckUnknown = [], ckScopeLabel = '', ckBusy = false, ckScopeVal = '', ckNote = '', ckLast = null;
+
+function ckOpen() {
+  if (me.role !== 'admin') { showToast('เฉพาะแอดมิน', 'error'); return; }
+  document.getElementById('ckOverlay').style.display = 'flex';
+  if (ckItems.length) ckRender(); else ckShowPick();
+}
+function ckClose() {
+  if (ckItems.length && !confirm('ปิดหน้านี้? ผลตรวจที่ยังไม่บันทึกจะหายไป')) return;
+  ckItems = []; ckUnknown = []; ckLast = null;
+  document.getElementById('ckOverlay').style.display = 'none';
+  document.getElementById('ckBar').style.display = 'none';
+}
+function ckScopeList(val) {
+  const tools = allData.tools || [];
+  if (val.startsWith('cat:')) return tools.filter(t => String(t.category || '') === val.slice(4));
+  if (val.startsWith('loc:')) return tools.filter(t => String(t.location || '') === val.slice(4));
+  return [];
+}
+function ckShowPick(msg) {
+  document.getElementById('ckBar').style.display = 'none';
+  const tools = allData.tools || [];
+  const cats = [...new Set(tools.map(t => t.category).filter(Boolean))].sort();
+  const locs = [...new Set(tools.map(t => t.location).filter(Boolean))].sort();
+  const opt = (v, t) => '<option value="' + esc(v) + '"' + (v === ckScopeVal ? ' selected' : '') + '>' + esc(t) + '</option>';
+  document.getElementById('ckBody').innerHTML =
+    '<div style="padding:10px 4px">' +
+    '<div style="color:#fff;font-weight:700;margin-bottom:6px">1) เลือกกลุ่มเครื่องมือที่จะตรวจ</div>' +
+    '<select class="ni-input" id="ckScope" onchange="ckScopeVal=this.value;ckShowPick()" style="margin-bottom:6px"><option value="">— เลือกหมวดหมู่หรือตำแหน่ง —</option>' +
+      (cats.length ? '<optgroup label="หมวดหมู่">' + cats.map(c => opt('cat:' + c, c + ' (' + ckScopeList('cat:' + c).length + ')')).join('') + '</optgroup>' : '') +
+      (locs.length ? '<optgroup label="ตำแหน่งเก็บ">' + locs.map(l => opt('loc:' + l, l + ' (' + ckScopeList('loc:' + l).length + ')')).join('') + '</optgroup>' : '') +
+    '</select>' +
+    (function () { const n = ckScopeVal ? ckScopeList(ckScopeVal).length : 0; return n > 80 ? '<div style="color:var(--amber);font-size:12px">กลุ่มนี้มี ' + n + ' รายการ ตรวจได้ครั้งละไม่เกิน 80 กรุณาเลือกกลุ่มที่เล็กลง</div>' : ''; })() +
+    '<div style="font-size:12px;color:var(--text2);line-height:1.7;margin:14px 0 8px"><b style="color:#fff">2) ถ่ายรูปเครื่องมือกลุ่มนั้นให้เห็นครบ</b> วางแยกกัน ไม่ซ้อน บนพื้นเรียบ แสงพอ<br>AI จะนับแล้วเทียบกับจำนวนคงเหลือในระบบ ผลนี้ใช้ตรวจเทียบเท่านั้น ไม่ปรับสต็อกให้อัตโนมัติ</div>' +
+    (msg ? '<div style="color:var(--red);font-size:13px;margin-bottom:10px">' + esc(msg) + '</div>' : '') +
+    (function () {
+      const ready = ckScopeVal && ckScopeList(ckScopeVal).length <= 80 && ckScopeList(ckScopeVal).length > 0;
+      const st = ready ? '' : 'opacity:.4;pointer-events:none;';
+      return '<div style="display:flex;gap:10px;' + st + '">' +
+        '<label class="ni-upload-btn" style="flex:1"><i class="fas fa-camera"></i> ถ่ายรูป<input type="file" accept="image/*" capture="environment" style="display:none" onchange="ckPick(this)"></label>' +
+        '<label class="ni-upload-btn" style="flex:1"><i class="fas fa-image"></i> เลือกจากคลัง<input type="file" accept="image/*" style="display:none" onchange="ckPick(this)"></label></div>';
+    })() + '</div>';
+}
+function ckLoading(t) {
+  document.getElementById('ckBar').style.display = 'none';
+  document.getElementById('ckBody').innerHTML = '<div style="text-align:center;padding:60px 10px;color:var(--text)"><i class="fas fa-spinner fa-spin" style="font-size:32px;color:#34d399"></i><div style="margin-top:14px">' + esc(t) + '</div><div style="font-size:11px;color:var(--text2);margin-top:6px">ใช้เวลาราว 10–30 วินาที</div></div>';
+}
+function ckPick(input) {
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file || ckBusy || !ckScopeVal) return;
+  ckBusy = true; ckLoading('กำลังเตรียมรูป...');
+  const back = m => { ckBusy = false; ckShowPick(m); };
+  const rd = new FileReader();
+  rd.onerror = () => back('อ่านไฟล์รูปไม่ได้');
+  rd.onload = e => {
+    const img = new Image();
+    img.onerror = () => back('ไฟล์นี้ไม่ใช่รูปภาพที่เปิดได้');
+    img.onload = () => {
+      const k = Math.min(1, 1568 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      const scope = ckScopeList(ckScopeVal);
+      ckLoading('AI กำลังนับเครื่องมือในรูป...');
+      callGAS('webCheckToolPhoto', [{ base64: c.toDataURL('image/jpeg', 0.85).split(',')[1], mimeType: 'image/jpeg', userId: me.uid, userName: me.name,
+        candidates: scope.map(t => ({ code: t.code, name: t.name })) }], res => {
+        ckBusy = false;
+        const fm = new Map((res.found || []).map(f => [f.code, f]));
+        const borrowed = {};
+        (allData.activeBorrows || []).forEach(b => { borrowed[b.itemCode] = (borrowed[b.itemCode] || 0) + (Number(b.qty) || 0); });
+        ckItems = scope.map(t => {
+          const f = fm.get(t.code);
+          return { code: t.code, name: t.name, unit: t.unit || '', sys: Number(t.stock) || 0, borrowed: borrowed[t.code] || 0, seen: f ? f.qty : 0, conf: f ? f.confidence : '', canvas: c,
+                   box: f ? f.box : null, thumb: f && f.box ? tvCrop(c, f.box) : '' };
+        });
+        ckUnknown = (res.unknown || []).map(u => ({ name: u.name, qty: u.qty, canvas: c, box: u.box, thumb: u.box ? tvCrop(c, u.box) : '' }));
+        ckNote = res.note || '';
+        const sel = document.getElementById('ckScope');
+        ckScopeLabel = ckScopeVal.startsWith('cat:') ? 'หมวด ' + ckScopeVal.slice(4) : 'ตำแหน่ง ' + ckScopeVal.slice(4);
+        ckRender();
+      }, err => back(String(err || 'วิเคราะห์ไม่สำเร็จ')));
+    };
+    img.src = e.target.result;
+  };
+  rd.readAsDataURL(file);
+}
+function ckState(r) { return r.seen === r.sys ? 'ok' : (r.seen < r.sys ? 'miss' : 'over'); }
+function ckRender() {
+  const cnt = { ok: 0, miss: 0, over: 0 };
+  ckItems.forEach(r => cnt[ckState(r)]++);
+  const order = { miss: 0, over: 1, ok: 2 };
+  const idx = ckItems.map((r, i) => i).sort((a, b) => order[ckState(ckItems[a])] - order[ckState(ckItems[b])]);
+  const chip = (t, c, bg) => '<span style="background:' + bg + ';color:' + c + ';font-size:12px;font-weight:700;padding:4px 12px;border-radius:14px">' + t + '</span>';
+  const rows = idx.map(i => {
+    const r = ckItems[i], st = ckState(r);
+    const badge = st === 'ok' ? chip('ครบ', '#34d399', 'rgba(52,211,153,.15)') : st === 'miss' ? chip('ขาด ' + (r.sys - r.seen), '#ef5350', 'rgba(239,83,80,.15)') : chip('เกิน ' + (r.seen - r.sys), '#e8a020', 'rgba(232,160,32,.18)');
+    const thumb = r.thumb ? '<img src="' + r.thumb + '" onclick="ckShowBox(' + i + ')" style="width:56px;height:56px;object-fit:cover;border-radius:8px;background:#000;cursor:zoom-in">'
+      : '<div style="width:56px;height:56px;border-radius:8px;border:1px dashed var(--text3);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:10px">ไม่พบ</div>';
+    return '<div style="display:flex;gap:10px;align-items:center;padding:10px;margin-bottom:8px;border-radius:12px;background:var(--surface);border:1px solid ' + (st === 'ok' ? 'var(--surface2)' : st === 'miss' ? 'rgba(239,83,80,.4)' : 'rgba(232,160,32,.4)') + '">' + thumb +
+      '<div style="flex:1;min-width:0"><div style="color:#fff;font-size:13px;font-weight:600;word-break:break-word">' + esc(r.name) + '</div>' +
+      '<div style="font-size:11px;color:var(--text2);margin-top:2px">' + esc(r.code) + ' · ในระบบ ' + r.sys + ' ' + esc(r.unit) + (r.borrowed ? ' · มีคนยืมอยู่ ' + r.borrowed : '') + (r.conf === 'low' ? ' · <span style="color:#ef5350">AI ไม่มั่นใจ</span>' : '') + '</div></div>' +
+      '<div style="text-align:center"><div style="font-size:10px;color:var(--text2)">เห็นในรูป</div><input type="number" min="0" value="' + r.seen + '" onchange="ckSet(' + i + ',this.value)" class="ni-input text-center" style="width:58px;box-sizing:border-box;padding:6px 2px;font-weight:700;color:var(--green)"></div>' +
+      '<div style="min-width:62px;text-align:right">' + badge + '</div></div>';
+  }).join('');
+  const unk = ckUnknown.length ? '<div style="margin:16px 0 8px;color:#fff;font-weight:700;font-size:13px">เห็นในรูปแต่ไม่ตรงกับรายการที่เลือก (' + ckUnknown.length + ')</div>' +
+    ckUnknown.map(u => '<div style="display:flex;gap:10px;align-items:center;padding:8px;margin-bottom:6px;border-radius:10px;background:var(--surface)">' +
+      (u.thumb ? '<img src="' + u.thumb + '" style="width:44px;height:44px;object-fit:cover;border-radius:6px">' : '') +
+      '<div style="flex:1;color:var(--text);font-size:13px">' + esc(u.name) + ' × ' + u.qty + '</div></div>').join('') +
+    '<div style="font-size:11px;color:var(--text2)">ถ้าเป็นของใหม่ ลงทะเบียนได้ที่ปุ่ม "ถ่ายรูปให้ AI ช่วยร่างรายการเครื่องมือ"</div>' : '';
+  document.getElementById('ckBody').innerHTML =
+    '<div style="font-size:12px;color:var(--text2);margin-bottom:8px">ตรวจ: <b style="color:#fff">' + esc(ckScopeLabel) + '</b> — AI นับได้ตามรูป ตรวจและแก้ตัวเลขให้ตรงของจริงได้ ถ้าเครื่องมือบางชิ้นไม่อยู่ในรูป จะนับเป็น "ขาด"' + (ckNote ? '<br><span style="color:var(--amber)">หมายเหตุจาก AI: ' + esc(ckNote) + '</span>' : '') + '</div>' +
+    '<div style="display:flex;gap:6px;margin-bottom:12px">' + chip('ครบ ' + cnt.ok, '#34d399', 'rgba(52,211,153,.15)') + chip('ขาด ' + cnt.miss, '#ef5350', 'rgba(239,83,80,.15)') + chip('เกิน ' + cnt.over, '#e8a020', 'rgba(232,160,32,.18)') + '</div>' +
+    rows + unk +
+    '<div style="margin-top:10px"><button class="ni-upload-btn" style="width:100%" onclick="ckReset()"><i class="fas fa-redo"></i> ถ่ายใหม่ / เปลี่ยนกลุ่ม</button></div>';
+  document.getElementById('ckBar').style.display = 'flex';
+  document.getElementById('ckBarText').textContent = 'ครบ ' + cnt.ok + ' · ขาด ' + cnt.miss + ' · เกิน ' + cnt.over;
+}
+function ckReset() { if (ckItems.length && !confirm('ล้างผลตรวจนี้แล้วเริ่มใหม่?')) return; ckItems = []; ckUnknown = []; ckShowPick(); }
+function ckSet(i, v) { const r = ckItems[i]; if (!r) return; r.seen = Math.max(0, parseInt(v, 10) || 0); ckRender(); }
+function ckShowBox(i) {
+  const r = ckItems[i]; if (!r || !r.box) return;
+  const [x1, y1, x2, y2] = r.box;
+  Swal.fire({ html: '<div style="position:relative;line-height:0"><img src="' + r.canvas.toDataURL('image/jpeg', 0.7) + '" style="width:100%;border-radius:8px">' +
+    '<div style="position:absolute;left:' + (x1 * 100) + '%;top:' + (y1 * 100) + '%;width:' + ((x2 - x1) * 100) + '%;height:' + ((y2 - y1) * 100) + '%;border:3px solid #34d399;border-radius:6px;box-shadow:0 0 0 9999px rgba(0,0,0,.45)"></div></div>' +
+    '<div style="margin-top:10px;font-size:13px">' + esc(r.name) + ' × ' + r.seen + '</div>', showConfirmButton: false, showCloseButton: true, background: '#1e1e1e', color: '#fff', width: 520 });
+}
+function ckSave() {
+  if (!ckItems.length || ckBusy) return;
+  const miss = ckItems.filter(r => ckState(r) === 'miss'), over = ckItems.filter(r => ckState(r) === 'over'), ok = ckItems.length - miss.length - over.length;
+  const lines = miss.slice(0, 12).map(r => r.name + ' (' + r.code + ') ควรมี ' + r.sys + ' เห็น ' + r.seen);
+  const detail = 'ตรวจเครื่องมือด้วยรูป [' + ckScopeLabel + ']: ครบ ' + ok + ', ขาด ' + miss.length + ', เกิน ' + over.length +
+    (lines.length ? ' — ขาด: ' + lines.join('; ') + (miss.length > 12 ? ' ...' : '') : '');
+  const btn = document.getElementById('ckSaveBtn'); btn.disabled = true;
+  callGAS('webSaveToolCheck', [{ detail, userId: me.uid, userName: me.name }], () => {
+    btn.disabled = false; ckItems = []; ckUnknown = [];
+    document.getElementById('ckOverlay').style.display = 'none'; document.getElementById('ckBar').style.display = 'none';
+    Swal.fire({ icon: 'success', title: 'บันทึกผลตรวจแล้ว', text: 'ครบ ' + ok + ' · ขาด ' + miss.length + ' · เกิน ' + over.length + ' (ดูย้อนหลังได้ในประวัติการใช้งาน)', background: '#1e1e1e', color: '#fff' });
+  }, err => { btn.disabled = false; showToast('บันทึกไม่สำเร็จ: ' + err, 'error'); });
 }
 
 /* ══ SUBMIT (withdraw/borrow) ══ */
