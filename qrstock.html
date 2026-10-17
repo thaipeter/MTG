@@ -1048,6 +1048,7 @@ body{display:flex;flex-direction:column}
 <div class="content" id="contentNewitem" style="display:none;flex-direction:column;overflow:hidden">
   <div class="newitem-form" id="newitemForm">
     <div class="ni-section-title"><i class="fas fa-plus-circle"></i> ขึ้นทะเบียนรายการใหม่</div>
+    <button class="ni-upload-btn" onclick="tvOpen()" style="width:100%;margin-bottom:14px;background:rgba(167,139,250,.15);border-color:#a78bfa;color:#c4b5fd"><i class="fas fa-camera"></i> ถ่ายรูปให้ AI ช่วยร่างรายการเครื่องมือ</button>
 
     <!-- ประเภท + หมวดหมู่ -->
     <div class="ni-row">
@@ -1143,6 +1144,19 @@ body{display:flex;flex-direction:column}
     <button class="cart-btn" id="niSubmitBtn" onclick="submitNewItem()" style="background:#fff;color:#7c3aed;font-weight:700">
       <i class="fas fa-save"></i> บันทึก
     </button>
+  </div>
+</div>
+
+<!-- ── ถ่ายรูปให้ AI ช่วยขึ้นทะเบียนเครื่องมือ (แอดมิน) ── -->
+<div id="tvOverlay" style="display:none;position:fixed;inset:0;z-index:900;background:var(--bg);flex-direction:column">
+  <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--surface2);background:var(--surface)">
+    <button onclick="tvClose()" style="background:none;border:0;color:var(--text);font-size:18px"><i class="fas fa-arrow-left"></i></button>
+    <div style="flex:1;font-weight:700;color:#fff"><i class="fas fa-camera me-1" style="color:#a78bfa"></i> ถ่ายรูปขึ้นทะเบียนเครื่องมือ</div>
+  </div>
+  <div id="tvBody" style="flex:1;overflow-y:auto;padding:14px 14px 100px"></div>
+  <div id="tvBar" style="display:none;position:fixed;left:0;right:0;bottom:0;padding:10px 14px;background:linear-gradient(135deg,#7c3aed,#5b21b6);align-items:center;gap:10px">
+    <div id="tvBarText" style="flex:1;color:#fff;font-size:13px"></div>
+    <button id="tvSaveBtn" onclick="tvSave()" style="background:#fff;color:#7c3aed;font-weight:700;border:0;border-radius:10px;padding:9px 16px"><i class="fas fa-save"></i> บันทึกทั้งหมด</button>
   </div>
 </div>
 
@@ -3654,6 +3668,256 @@ function submitNewItem() {
     showToast('เกิดข้อผิดพลาด: ' + err, 'error');
     if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> บันทึก'; }
   });
+}
+
+/* ══ ถ่ายรูปให้ AI ช่วยขึ้นทะเบียนเครื่องมือ (แอดมิน) ══ */
+let tvCanvas = null;   // รูปต้นฉบับที่ย่อแล้ว ใช้ครอปรูปแต่ละชิ้น
+let tvRows = [];
+let tvBusy = false;
+
+function tvOpen() {
+  if (me.role !== 'admin') { showToast('เฉพาะแอดมิน', 'error'); return; }
+  const cats = [...new Set((allData.tools || []).map(i => i.category).filter(Boolean))].sort();
+  tvCats = cats;
+  document.getElementById('tvOverlay').style.display = 'flex';
+  if (!tvRows.length) tvShowPick();
+  else tvRender();
+}
+let tvCats = [];
+function tvClose() {
+  if (tvRows.length && !confirm('ปิดหน้านี้? รายการที่ยังไม่บันทึกจะหายไป')) return;
+  tvRows = []; tvCanvas = null;
+  document.getElementById('tvOverlay').style.display = 'none';
+  document.getElementById('tvBar').style.display = 'none';
+}
+
+function tvShowPick(msg) {
+  document.getElementById('tvBar').style.display = 'none';
+  document.getElementById('tvBody').innerHTML =
+    '<div style="text-align:center;padding:24px 8px">' +
+    '<div style="font-size:42px;color:#a78bfa"><i class="fas fa-camera"></i></div>' +
+    '<div style="color:#fff;font-weight:700;margin:10px 0 6px">ถ่ายรูปเครื่องมือให้ AI ช่วยร่างรายการ</div>' +
+    '<div style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:16px">วางเครื่องมือแยกกัน ไม่ซ้อน บนพื้นเรียบ แสงพอ ถ่ายทีละถาดหรือทีละกลุ่ม<br>AI จะร่างชื่อ จำนวน และรูปแต่ละชิ้นให้ คุณตรวจ/แก้ก่อนกดบันทึก</div>' +
+    (msg ? '<div style="color:var(--red);font-size:13px;margin-bottom:12px">' + esc(msg) + '</div>' : '') +
+    '<div style="display:flex;gap:10px">' +
+    '<label class="ni-upload-btn" style="flex:1"><i class="fas fa-camera"></i> ถ่ายรูป<input type="file" accept="image/*" capture="environment" style="display:none" onchange="tvPick(this)"></label>' +
+    '<label class="ni-upload-btn" style="flex:1"><i class="fas fa-image"></i> เลือกจากคลัง<input type="file" accept="image/*" style="display:none" onchange="tvPick(this)"></label>' +
+    '</div></div>';
+}
+
+function tvLoading(text) {
+  document.getElementById('tvBar').style.display = 'none';
+  document.getElementById('tvBody').innerHTML =
+    '<div style="text-align:center;padding:60px 10px;color:var(--text)"><i class="fas fa-spinner fa-spin" style="font-size:32px;color:#a78bfa"></i>' +
+    '<div style="margin-top:14px">' + esc(text) + '</div><div style="font-size:11px;color:var(--text2);margin-top:6px">ใช้เวลาราว 10–30 วินาที</div></div>';
+}
+
+let tvAppend = false;
+function tvPickMore(input) { tvAppend = true; tvPick(input); }
+function tvPick(input) {
+  const file = input.files && input.files[0];
+  const append = tvAppend && tvRows.length > 0; tvAppend = false;
+  input.value = '';
+  if (!file || tvBusy) return;
+  const back = msg => { tvBusy = false; if (append) { tvRender(); showToast(msg, 'error'); } else tvShowPick(msg); };
+  tvBusy = true;
+  tvLoading('กำลังเตรียมรูป...');
+  const reader = new FileReader();
+  reader.onerror = () => back('อ่านไฟล์รูปไม่ได้');
+  reader.onload = e => {
+    const img = new Image();
+    img.onerror = () => back('ไฟล์นี้ไม่ใช่รูปภาพที่เปิดได้');
+    img.onload = () => {
+      const MAX = 1568, k = Math.min(1, MAX / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      const srcCanvas = c;
+      tvCanvas = c;
+      const b64 = c.toDataURL('image/jpeg', 0.85).split(',')[1];
+      tvLoading('AI กำลังดูรูปและร่างรายการ...');
+      callGAS('webAnalyzeToolPhoto', [{ base64: b64, mimeType: 'image/jpeg', categories: tvCats, userId: me.uid, userName: me.name }], res => {
+        tvBusy = false;
+        const list = (res && res.items) || [];
+        if (!list.length) { if (!append) tvCanvas = null; back('AI ไม่พบเครื่องมือในรูปนี้ ลองถ่ายใหม่ให้ใกล้และชัดขึ้น'); return; }
+        const existing = tvExistingNames();
+        const fresh = list.map((it, i) => {
+          const dup = existing.get(tvNorm(it.name)) || '';
+          return { id: Date.now() + i, canvas: srcCanvas, name: it.name, category: it.category || '', qty: it.qty || 1, unit: it.unit || 'อัน', box: it.box, conf: it.confidence,
+                   thumb: it.box ? tvCrop(srcCanvas, it.box) : '', include: !dup, dupOf: dup };
+        });
+        tvRows = append ? tvRows.concat(fresh) : fresh;
+        tvNote = (res && res.note) || '';
+        tvRender();
+      }, err => { if (!append) tvCanvas = null; back(String(err || 'วิเคราะห์ไม่สำเร็จ')); });
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+let tvNote = '';
+
+function tvNorm(s) { return String(s || '').toLowerCase().replace(/\s+/g, ''); }
+function tvExistingNames() {
+  const m = new Map();
+  [...(allData.items || []), ...(allData.tools || [])].forEach(i => m.set(tvNorm(i.name), i.name));
+  return m;
+}
+
+function tvCrop(cv, box) {
+  try {
+    const W = cv.width, H = cv.height;
+    let [x1, y1, x2, y2] = box;
+    const px = (x2 - x1) * 0.08, py = (y2 - y1) * 0.08;
+    x1 = Math.max(0, x1 - px); y1 = Math.max(0, y1 - py); x2 = Math.min(1, x2 + px); y2 = Math.min(1, y2 + py);
+    const sw = Math.max(8, Math.round((x2 - x1) * W)), sh = Math.max(8, Math.round((y2 - y1) * H));
+    const k = Math.min(1, 480 / Math.max(sw, sh));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(sw * k)); c.height = Math.max(1, Math.round(sh * k));
+    c.getContext('2d').drawImage(cv, x1 * W, y1 * H, sw, sh, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.82);
+  } catch (e) { return ''; }
+}
+
+function tvRender() {
+  const body = document.getElementById('tvBody');
+  const rows = tvRows.map((r, i) => {
+    const confBadge = r.conf === 'low' ? '<span style="background:rgba(239,83,80,.15);color:#ef5350;font-size:10px;padding:2px 7px;border-radius:10px">AI ไม่มั่นใจ ตรวจดู</span>' : '';
+    const dupBadge = r.dupOf ? '<span style="background:rgba(232,160,32,.18);color:var(--amber);font-size:10px;padding:2px 7px;border-radius:10px">ซ้ำกับ "' + esc(r.dupOf) + '"</span>' : '';
+    const thumb = r.thumb
+      ? '<img src="' + r.thumb + '" onclick="tvShowBox(' + i + ')" style="width:72px;height:72px;object-fit:cover;border-radius:8px;background:#000;cursor:zoom-in">'
+      : '<div style="width:72px;height:72px;border-radius:8px;border:1px dashed var(--text3);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px;text-align:center">ไม่มีรูป</div>';
+    const inp = 'class="ni-input" style="width:100%;box-sizing:border-box;min-width:0"';
+    return '<div style="display:flex;gap:10px;padding:10px;margin-bottom:10px;border-radius:12px;background:var(--surface);border:1px solid ' + (r.include ? 'var(--surface2)' : 'transparent') + ';opacity:' + (r.include ? 1 : .5) + '">' +
+      '<div style="flex:none;display:flex;flex-direction:column;gap:6px;align-items:center">' + thumb +
+        (r.thumb ? '<button onclick="tvDropThumb(' + i + ')" style="background:none;border:0;color:var(--text2);font-size:10px">ลบรูป</button>' : '') + '</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<input ' + inp + ' value="' + esc(r.name) + '" placeholder="ชื่อรายการ" oninput="tvSet(' + i + ',\'name\',this.value)">' +
+        '<div style="display:flex;gap:6px;margin-top:6px">' +
+          '<input ' + inp + ' list="tvCatList" value="' + esc(r.category) + '" placeholder="หมวดหมู่" style="flex:1;min-width:0;width:auto;box-sizing:border-box" oninput="tvSet(' + i + ',\'category\',this.value)">' +
+          '<input class="ni-input text-center" type="number" min="0" value="' + r.qty + '" style="flex:none;width:58px;box-sizing:border-box;padding-left:4px;padding-right:4px;color:var(--green);font-weight:700" oninput="tvSet(' + i + ',\'qty\',this.value)">' +
+          '<input class="ni-input text-center" value="' + esc(r.unit) + '" style="flex:none;width:60px;box-sizing:border-box;padding-left:4px;padding-right:4px" oninput="tvSet(' + i + ',\'unit\',this.value)">' +
+        '</div>' +
+        '<div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap">' + confBadge + dupBadge +
+          '<span style="flex:1"></span>' +
+          '<label style="font-size:12px;color:var(--text);display:flex;align-items:center;gap:5px"><input type="checkbox" ' + (r.include ? 'checked' : '') + ' onchange="tvSet(' + i + ',\'include\',this.checked);tvRender()"> บันทึก</label>' +
+          '<button onclick="tvRemove(' + i + ')" style="background:none;border:0;color:#ef5350"><i class="fas fa-trash"></i></button>' +
+        '</div>' +
+      '</div></div>';
+  }).join('');
+  body.innerHTML =
+    '<datalist id="tvCatList">' + tvCats.map(c => '<option value="' + esc(c) + '">').join('') + '</datalist>' +
+    '<div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px">AI ร่างรายการให้ <b style="color:#fff">' + tvRows.length + ' แถว</b> — ตรวจชื่อ ขนาด และจำนวนให้ตรงของจริงก่อนบันทึก (AI อ่านขนาดบนตัวเครื่องมือไม่ได้ทุกครั้ง) แตะรูปเพื่อดูว่า AI ชี้ตรงชิ้นไหน' +
+    (tvNote ? '<br><span style="color:var(--amber)">หมายเหตุจาก AI: ' + esc(tvNote) + '</span>' : '') + '</div>' +
+    '<div class="ni-field" style="margin-bottom:12px"><div class="ni-label">ตำแหน่งเก็บ (ใช้กับทุกแถว)</div><input class="ni-input" style="box-sizing:border-box" id="tvLoc" list="niLocList" placeholder="เช่น ตู้เครื่องมือ A ลิ้นชัก 2" value="' + esc(tvLocVal) + '" oninput="tvLocVal=this.value"></div>' +
+    rows +
+    '<div style="display:flex;gap:10px;margin-top:6px">' +
+      '<button class="ni-upload-btn" style="flex:1" onclick="tvAddRow()"><i class="fas fa-plus"></i> เพิ่มแถวเอง</button>' +
+      '<label class="ni-upload-btn" style="flex:1"><i class="fas fa-camera"></i> ถ่ายรูปเพิ่ม<input type="file" accept="image/*" capture="environment" style="display:none" onchange="tvPickMore(this)"></label>' +
+    '</div>';
+  tvUpdateBar();
+}
+let tvLocVal = '';
+
+function tvUpdateBar() {
+  const n = tvRows.filter(r => r.include).length;
+  document.getElementById('tvBar').style.display = 'flex';
+  document.getElementById('tvBarText').textContent = 'จะบันทึก ' + n + ' รายการเข้าหมวดเครื่องมือ';
+}
+function tvSet(i, k, v) {
+  const r = tvRows[i]; if (!r) return;
+  if (k === 'qty') v = Math.max(0, parseInt(v, 10) || 0);
+  r[k] = v;
+  if (k === 'name') { r.dupOf = tvExistingNames().get(tvNorm(v)) || ''; }
+  if (k === 'include') tvUpdateBar();
+  if (k === 'name') tvUpdateBar();
+}
+function tvRemove(i) { tvRows.splice(i, 1); if (!tvRows.length) { tvCanvas = null; tvShowPick(); } else tvRender(); }
+function tvDropThumb(i) { tvRows[i].thumb = ''; tvRows[i].box = null; tvRender(); }
+function tvAddRow() { tvRows.push({ id: Date.now(), name: '', category: '', qty: 1, unit: 'อัน', box: null, conf: 'high', thumb: '', include: true, dupOf: '' }); tvRender(); }
+function tvShowBox(i) {
+  const r = tvRows[i]; if (!r || !r.box || !r.canvas) return;
+  const [x1, y1, x2, y2] = r.box;
+  Swal.fire({
+    html: '<div style="position:relative;line-height:0"><img src="' + r.canvas.toDataURL('image/jpeg', 0.7) + '" style="width:100%;border-radius:8px">' +
+      '<div style="position:absolute;left:' + (x1 * 100) + '%;top:' + (y1 * 100) + '%;width:' + ((x2 - x1) * 100) + '%;height:' + ((y2 - y1) * 100) + '%;border:3px solid #a78bfa;border-radius:6px;box-shadow:0 0 0 9999px rgba(0,0,0,.45)"></div></div>' +
+      '<div style="margin-top:10px;font-size:13px">' + esc(r.name) + ' × ' + r.qty + '</div>',
+    showConfirmButton: false, showCloseButton: true, background: '#1e1e1e', color: '#fff', width: 520
+  });
+}
+
+async function tvSave() {
+  if (tvBusy) return;
+  const rows = tvRows.filter(r => r.include);
+  if (!rows.length) { showToast('ยังไม่ได้เลือกรายการที่จะบันทึก', 'error'); return; }
+  const names = new Set();
+  for (const r of rows) {
+    r.name = String(r.name || '').trim(); r.category = String(r.category || '').trim(); r.unit = String(r.unit || '').trim() || 'อัน';
+    if (!r.name) { showToast('มีแถวที่ยังไม่ใส่ชื่อ', 'error'); return; }
+    if (!r.category) { showToast('กรุณาใส่หมวดหมู่ให้ "' + r.name + '"', 'error'); return; }
+    const n = tvNorm(r.name);
+    if (names.has(n)) { showToast('ชื่อซ้ำกันเองในรายการ: ' + r.name, 'error'); return; }
+    names.add(n);
+    if (tvExistingNames().has(n)) { showToast('"' + r.name + '" มีอยู่ในระบบแล้ว (ติ๊กออกหรือเปลี่ยนชื่อ)', 'error'); return; }
+  }
+  const ok = await Swal.fire({ icon: 'question', title: 'บันทึก ' + rows.length + ' รายการ?', text: 'จะสร้างเป็นรายการ "เครื่องมือ" พร้อมจำนวนเริ่มต้นและรูป', showCancelButton: true, confirmButtonText: 'บันทึก', cancelButtonText: 'กลับไปตรวจ', background: '#1e1e1e', color: '#fff' });
+  if (!ok.isConfirmed) return;
+  tvBusy = true;
+  const btn = document.getElementById('tvSaveBtn');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
+  const fail = msg => { tvBusy = false; btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> บันทึกทั้งหมด'; Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', text: String(msg), background: '#1e1e1e', color: '#fff' }); };
+  try {
+    // 1) ออกรหัสต่อเนื่องในแต่ละหมวด (ขอเลขถัดไปจากเซิร์ฟเวอร์ครั้งเดียวต่อ prefix)
+    const nextByPrefix = {};
+    for (const r of rows) {
+      const prefix = tvPrefix(r.category);
+      if (!nextByPrefix[prefix]) {
+        const res = await tvCall('webGetNextCode', [{ prefix }]);
+        const m = String(res.nextCode).match(/^(.*?)(\d+)$/);
+        nextByPrefix[prefix] = { head: m ? m[1] : prefix + '-', num: m ? parseInt(m[2], 10) : 1, len: m ? m[2].length : 3 };
+      }
+      const p = nextByPrefix[prefix];
+      r.code = p.head + String(p.num).padStart(p.len, '0'); p.num++;
+    }
+    // 2) สร้างรายการทั้งหมดในครั้งเดียว
+    const loc = (tvLocVal || '').trim();
+    const payload = rows.map(r => ({ type: 'Tools', category: r.category, code: r.code, name: r.name, unit: r.unit, min: 0, qty: r.qty, location: loc,
+      remark: 'ขึ้นทะเบียนจากรูปถ่าย (AI ช่วยร่าง)', user: me.name, userId: me.uid }));
+    await tvCall('webAddNewItems', [payload]);
+    // 3) อัปโหลดรูปครอปทีละรายการ (รายการไหนรูปไม่ขึ้น ไม่ทำให้รายการหาย)
+    let imgFail = 0, i = 0;
+    for (const r of rows) {
+      i++;
+      if (!r.thumb) continue;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> อัปโหลดรูป ' + i + '/' + rows.length;
+      try { await tvCall('webSaveItemImage', [{ code: r.code, type: 'tool', base64: r.thumb.split(',')[1], mimeType: 'image/jpeg', userName: me.name, userId: me.uid }]); }
+      catch (e) { imgFail++; }
+    }
+    callGAS('getInventoryData', [], d => { if (d) allData = d; }, null);
+    tvBusy = false; tvRows = []; tvCanvas = null; tvLocVal = ''; tvNote = '';
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> บันทึกทั้งหมด';
+    document.getElementById('tvOverlay').style.display = 'none';
+    document.getElementById('tvBar').style.display = 'none';
+    Swal.fire({ icon: imgFail ? 'warning' : 'success', title: 'บันทึกแล้ว ' + rows.length + ' รายการ', text: imgFail ? 'แต่รูป ' + imgFail + ' รายการอัปโหลดไม่สำเร็จ เพิ่มรูปภายหลังได้ที่หน้าจัดการรายการ' : 'รหัส ' + rows[0].code + (rows.length > 1 ? ' ถึง ' + rows[rows.length - 1].code : ''), background: '#1e1e1e', color: '#fff' });
+  } catch (e) { fail(e && e.message ? e.message : e); }
+}
+function tvCall(fn, args) { return new Promise((resolve, reject) => callGAS(fn, args, resolve, err => reject(new Error(String(err))))); }
+function tvPrefix(cat) {
+  const type = 'Tools', s = allData.settings || {};
+  const def = s.prefixTool || 'TL';
+  if (s.categories) {
+    for (const p of s.categories.split(',')) {
+      const str = p.trim(), ci = str.indexOf(':');
+      if (ci > 0 && str.slice(0, ci).trim().toLowerCase() === cat.trim().toLowerCase() && str.slice(ci + 1).trim()) return str.slice(ci + 1).trim().toUpperCase().replace(/-+$/, '');
+    }
+  }
+  const cnt = {};
+  (allData.tools || []).filter(i => String(i.category || '').trim().toLowerCase() === cat.trim().toLowerCase()).forEach(i => {
+    const m = String(i.code || '').toUpperCase().trim().match(/^([A-Z]+(?:-[A-Z]+)*)-\d+$/);
+    if (m) cnt[m[1]] = (cnt[m[1]] || 0) + 1;
+  });
+  const keys = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]);
+  return (keys[0] || def).replace(/-+$/, '');
 }
 
 /* ══ SUBMIT (withdraw/borrow) ══ */
