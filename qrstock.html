@@ -1284,6 +1284,10 @@ body{display:flex;flex-direction:column}
       <div class="mine-stat-label">เบิกเดือนนี้</div>
     </div>
     <div class="mine-stat">
+      <div class="mine-stat-num" id="mineStatReceive" style="color:var(--green)">-</div>
+      <div class="mine-stat-label">รับเข้าเดือนนี้</div>
+    </div>
+    <div class="mine-stat">
       <div class="mine-stat-num" id="mineStatBorrow" style="color:var(--blue)">-</div>
       <div class="mine-stat-label">ยืมค้างอยู่</div>
     </div>
@@ -2012,7 +2016,8 @@ function loginSuccess(uid) {
   if (stTab) stTab.style.display = (me.role === 'admin' || me.role === 'staff') ? 'flex' : 'none';
   // reset mine data
   mineData = { history: [], borrows: [], retro: [], retroPending: [] };
-  document.getElementById('mineStatWithdraw').textContent = '-';
+  document.getElementById('mineStatWithdraw').textContent = '-';
+  document.getElementById('mineStatReceive').textContent = '-';
   document.getElementById('mineStatBorrow').textContent = '-';
   document.getElementById('mineStatTotal').textContent = '-';
   document.getElementById('mineBorrowCount').textContent = '0';
@@ -4957,8 +4962,8 @@ function updateMineStats() {
   const now = new Date();
   const thisMonth = now.getMonth();
   const thisYear = now.getFullYear();
-  const withdrawThisMonth = mineData.history.filter(h => {
-    if (h.type !== 'เบิก') return false;
+  const inThisMonth = type => mineData.history.filter(h => {
+    if (h.type !== type) return false;
     // Try parse date dd/mm/yy
     const parts = (h.date || '').split('/');
     if (parts.length < 3) return true; // can't parse, count it
@@ -4966,7 +4971,9 @@ function updateMineStats() {
     const yy = parseInt(parts[2]); const y = yy >= 2500 ? yy - 543 : (yy > 100 ? yy : (yy > 43 ? yy + 1957 : yy + 2000));
     return m === thisMonth && y === thisYear;
   }).length;
+  const withdrawThisMonth = inThisMonth('เบิก'), receiveThisMonth = inThisMonth('รับเข้า');
   _mineCountUp(document.getElementById('mineStatWithdraw'), withdrawThisMonth);
+  _mineCountUp(document.getElementById('mineStatReceive'), receiveThisMonth);
   document.getElementById('mineStatBorrow').textContent = mineData.borrows.length;
   document.getElementById('mineStatTotal').textContent = mineData.history.length;
   document.getElementById('mineBorrowCount').textContent = mineData.borrows.length;
@@ -4986,7 +4993,7 @@ function _mineMonthKey(h) {
 }
 function _mineGroupByMonth(list, cards) {
   const stat = {};
-  list.forEach(h => { const k = _mineMonthKey(h); (stat[k] = stat[k] || { all: 0, wd: 0 }).all++; if (h.type === 'เบิก') stat[k].wd++; });
+  list.forEach(h => { const k = _mineMonthKey(h); (stat[k] = stat[k] || { all: 0, wd: 0, rc: 0 }).all++; if (h.type === 'เบิก') stat[k].wd++; if (h.type === 'รับเข้า') stat[k].rc++; });
   const nowT = new Date(Date.now() + 7 * 3600 * 1000);
   const curKey = nowT.getUTCFullYear() + '-' + String(nowT.getUTCMonth() + 1).padStart(2, '0');
   let last = null, out = '';
@@ -4998,7 +5005,7 @@ function _mineGroupByMonth(list, cards) {
       const label = k === 'unknown' ? 'ไม่ระบุเดือน' : _TH_MON[parseInt(k.slice(5), 10) - 1] + ' ' + (parseInt(k.slice(0, 4), 10) + 543);
       out += `<div class="mine-month-h${cur ? ' cur' : ''}">
         <div class="mine-month-name">${cur ? '<i class="fas fa-star"></i>' : '<i class="far fa-calendar"></i>'} ${label}${cur ? ' <span class="mine-month-badge">เดือนนี้</span>' : ''}</div>
-        <div class="mine-month-sum">เบิก <b class="mine-month-wd" data-n="${s.wd}">${cur ? 0 : s.wd}</b> รายการ <span style="opacity:.55">• ทั้งหมด ${s.all}</span></div>
+        <div class="mine-month-sum">เบิก <b class="mine-month-wd" data-n="${s.wd}">${cur ? 0 : s.wd}</b>${s.rc ? ' • รับเข้า <b style="color:var(--green)">' + s.rc + '</b>' : ''} รายการ <span style="opacity:.55">• ทั้งหมด ${s.all}</span></div>
       </div>`;
     }
     out += cards[i];
