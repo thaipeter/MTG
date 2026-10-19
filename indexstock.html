@@ -9436,7 +9436,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         stockCell = `<td class="text-center ${isLow?'text-danger':'text-primary'} fw-bold fs-5">${formatNumber(item.stock)}</td>`;
                         statusCell = `<td class="text-center">${statusBadge}</td>`;
                     }
-                    const checkboxCell = `<td class="admin-only-element text-center"><input type="checkbox" class="inv-select-cb" ${inventorySelection[type] && inventorySelection[type].has(item.code) ? 'checked' : ''} onclick="toggleInventorySelect('${safeType}', '${safeCode}', this.checked)"></td>`;
+                    const checkboxCell = `<td class="admin-only-element text-center"${currentUserProfile.role === 'admin' ? '' : ' style="display:none"'}><input type="checkbox" class="inv-select-cb" ${inventorySelection[type] && inventorySelection[type].has(item.code) ? 'checked' : ''} onclick="toggleInventorySelect('${safeType}', '${safeCode}', this.checked)"></td>`;
                     // ★ เพิ่มใหม่ — คอลัมน์มูลค่าคลังต่อรายการ (คงเหลือ × ราคาทุนต่อหน่วย) แสดงเฉพาะผู้มีสิทธิ์เห็นราคา
                     // เช็คสิทธิ์ตรงนี้เลย (ไม่รอ applyPermissions รอบถัดไป) กันเซลล์ใหม่โผล่มาแบบไม่ซ่อนก่อนชั่วขณะ
                     const itemValue = (Number(item.stock) || 0) * (Number(item.price) || 0);
