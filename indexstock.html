@@ -2559,7 +2559,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                                 <div style="height: 35px; width: 100%; margin-top: 8px;"><canvas id="sparkline-4"></canvas></div>
                             </div>
                         </div>
-                        <div class="col-6 col-md-3 col-sm-6 price-only-element">
+                        <div class="col-6 col-md-3 col-sm-6">
                             <div class="stat-card border-top-0 border-end-0 border-bottom-0 border-start border-warning border-4">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
@@ -2572,8 +2572,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             </div>
                         </div>
                         <!-- ★ เพิ่มใหม่ — รายการที่ยังไม่ได้คืนจากใบแทน (ยืม) แสดงข้างมูลค่าคลังรวม (เฉพาะ Admin) -->
-                        <div class="col-6 col-md-3 col-sm-6 admin-only-element" id="dashSlipBorrowCol">
-                            <div class="stat-card border-top-0 border-end-0 border-bottom-0 border-start border-danger border-4" style="cursor:pointer;" onclick="goTo('replacementSlip')" title="ไปที่หน้าใบแทน">
+                        <div class="col-6 col-md-3 col-sm-6" id="dashSlipBorrowCol">
+                            <div class="stat-card border-top-0 border-end-0 border-bottom-0 border-start border-danger border-4" style="cursor:pointer;" onclick="if(currentUserProfile.role==='admin')goTo('replacementSlip')" title="ไปที่หน้าใบแทน">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <div class="stat-title" style="color:var(--text-muted); font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">ค้างคืน (จากใบแทน)</div>
@@ -7864,7 +7864,10 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 }
 
                 // ★ เพิ่มใหม่ — รายการที่ยังไม่ได้คืนจากใบแทน (ข้อมูลใบแทนดึงได้เฉพาะ Admin)
-                try { if (currentUserProfile && String(currentUserProfile.role).toLowerCase() === 'admin') loadReplacementHistory(); } catch(e) { console.warn('loadReplacementHistory (dashboard) error:', e); }
+                try {
+                    if (currentUserProfile && String(currentUserProfile.role).toLowerCase() === 'admin') loadReplacementHistory();
+                    else loadSlipBorrowSummaryForUser();   // ผู้ใช้ทั่วไป: ดึงเฉพาะตัวเลขสรุป (ไม่มีข้อมูลส่วนตัวในใบแทน)
+                } catch(e) { console.warn('loadReplacementHistory (dashboard) error:', e); }
 
                 const toolCodes = new Set(data.tools.map(t => t.code));
                 const activeToolBorrows = data.activeBorrows.filter(b => toolCodes.has(b.itemCode));
@@ -13958,6 +13961,18 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                     ? 'ยังไม่ได้คืน · ' + open.length + ' ใบ' + (overdue ? ' · เกินกำหนด ' + overdue + ' ใบ' : '')
                     : 'ไม่มีรายการค้างคืน';
             }
+        }
+
+        function loadSlipBorrowSummaryForUser() {
+            callGAS('webGetSlipBorrowSummary', [], (res) => {
+                const el = document.getElementById('count-slip-borrowing'), sub = document.getElementById('statSlipBorrowSub');
+                if (!el || !res) return;
+                el.innerText = formatNumber(res.itemCount || 0) + ' รายการ';
+                if (sub) {
+                    sub.style.color = res.overdue ? '#f87171' : '#a78bfa';
+                    sub.innerText = res.openCount ? 'ยังไม่ได้คืน · ' + res.openCount + ' ใบ' + (res.overdue ? ' · เกินกำหนด ' + res.overdue + ' ใบ' : '') : 'ไม่มีรายการค้างคืน';
+                }
+            }, () => { const sub = document.getElementById('statSlipBorrowSub'); if (sub) sub.innerText = '-'; });
         }
 
         function loadReplacementHistory() {
