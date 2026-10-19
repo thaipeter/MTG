@@ -2611,6 +2611,33 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                                 <div style="font-size:11px; margin-top:8px; color:var(--text-muted);"><i class="fas fa-list me-1"></i> คลิกเพื่อดูรายการทั้งหมด</div>
                             </div>
                         </div>
+                        <!-- ★ เฉพาะ user/staff — สรุปรับเข้า/เบิก "ของฉัน" เดือนนี้ (แอดมินไม่เห็นการ์ดนี้เพราะเห็นภาพรวมอยู่แล้ว) -->
+                        <div class="col-6 col-md-3 col-sm-6 user-only-element" style="display:none">
+                            <div class="stat-card border-top-0 border-end-0 border-bottom-0 border-start border-success border-4" style="cursor:pointer;" onclick="openMonthlyTxModal('in', 'month', true)" title="คลิกเพื่อดูรายการรับเข้าของคุณในเดือนนี้">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="stat-title" style="color:var(--text-muted); font-size:.85rem; font-weight:700; letter-spacing:0.5px;">รับเข้าของฉัน <span id="myMonthLabelIn"></span></div>
+                                        <div class="stat-value text-success" id="count-my-month-in" style="font-size:2rem; font-weight:800; font-family:'TH Sarabun New','Sarabun',sans-serif;">0 <span style="font-size:1rem">รายการ</span></div>
+                                        <div style="font-size:12px; font-weight:700; margin-top:2px; color:#a78bfa;" id="sub-my-month-in">รวม 0 ชิ้น</div>
+                                    </div>
+                                    <div class="stat-icon bg-success bg-opacity-10 text-success mb-0"><i class="fas fa-user-check"></i></div>
+                                </div>
+                                <div style="font-size:11px; margin-top:8px; color:var(--text-muted);"><i class="fas fa-list me-1"></i> คลิกเพื่อดูรายการของฉัน</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3 col-sm-6 user-only-element" style="display:none">
+                            <div class="stat-card border-top-0 border-end-0 border-bottom-0 border-start border-danger border-4" style="cursor:pointer;" onclick="openMonthlyTxModal('out', 'month', true)" title="คลิกเพื่อดูรายการเบิกของคุณในเดือนนี้">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="stat-title" style="color:var(--text-muted); font-size:.85rem; font-weight:700; letter-spacing:0.5px;">เบิกของฉัน <span id="myMonthLabelOut"></span></div>
+                                        <div class="stat-value text-danger" id="count-my-month-out" style="font-size:2rem; font-weight:800; font-family:'TH Sarabun New','Sarabun',sans-serif;">0 <span style="font-size:1rem">รายการ</span></div>
+                                        <div style="font-size:12px; font-weight:700; margin-top:2px; color:#a78bfa;" id="sub-my-month-out">รวม 0 ชิ้น</div>
+                                    </div>
+                                    <div class="stat-icon bg-danger bg-opacity-10 text-danger mb-0"><i class="fas fa-user-tag"></i></div>
+                                </div>
+                                <div style="font-size:11px; margin-top:8px; color:var(--text-muted);"><i class="fas fa-list me-1"></i> คลิกเพื่อดูรายการของฉัน</div>
+                            </div>
+                        </div>
                     </div>
                     <!-- Main Content -->
                     <div class="row g-4 mt-0 mb-4">
@@ -7147,6 +7174,9 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 }
             });
 
+            // การ์ด "ของฉัน" — แสดงเฉพาะที่ไม่ใช่แอดมิน
+            document.querySelectorAll('.user-only-element').forEach(el => { el.style.display = isAdmin ? 'none' : ''; });
+
             // ซ่อนปุ่ม "รับเข้า" ทุกจุด สำหรับ staff
             document.querySelectorAll('.receive-btn').forEach(el => {
                 el.style.display = canReceive ? '' : 'none';
@@ -7983,12 +8013,23 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 set('count-month-out', formatNumber(outList.length) + ' <span style="font-size:1rem">รายการ</span>');
                 set('sub-month-out', 'รวม ' + formatNumber(sum(outList)) + ' ชิ้น');
                 set('monthTxLabelIn', label); set('monthTxLabelOut', label);
+                // ของฉัน (เฉพาะรายการที่ผู้ใช้คนนี้ทำเอง)
+                const me = String((currentUserProfile && currentUserProfile.name) || '').trim();
+                const mine = function (l) { return l.filter(function (h) { return String(h.user || '').trim() === me; }); };
+                const myIn = me ? mine(inList) : [], myOut = me ? mine(outList) : [];
+                window._monthTx.myIn = myIn; window._monthTx.myOut = myOut;
+                set('count-my-month-in', formatNumber(myIn.length) + ' <span style="font-size:1rem">รายการ</span>');
+                set('sub-my-month-in', 'รวม ' + formatNumber(sum(myIn)) + ' ชิ้น');
+                set('count-my-month-out', formatNumber(myOut.length) + ' <span style="font-size:1rem">รายการ</span>');
+                set('sub-my-month-out', 'รวม ' + formatNumber(sum(myOut)) + ' ชิ้น');
+                set('myMonthLabelIn', label); set('myMonthLabelOut', label);
                 // ถ้า modal เปิดอยู่ตอนข้อมูลรีเฟรช ให้อัปเดตตารางด้วย
                 const md = document.getElementById('monthlyTxModal');
                 if (md && md.classList.contains('show')) renderMonthlyTxTable();
             } catch (e) { console.warn('renderMonthlyTxCards error:', e); }
         }
-        function openMonthlyTxModal(type, period) {
+        function openMonthlyTxModal(type, period, mine) {
+            window._monthTx.mine = !!mine;
             window._monthTx.type = type; window._monthTx.view = 'all'; window._monthTx.period = (period === 'today') ? 'today' : 'month';
             const s = document.getElementById('monthlyTxSearch'); if (s) s.value = '';
             setMonthlyTxView('all', true);
@@ -8005,7 +8046,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
         function renderMonthlyTxTable() {
             const st = window._monthTx; const isIn = st.type === 'in';
             const isToday = st.period === 'today';
-            const list = isIn ? (isToday ? st.inToday : st.in) : (isToday ? st.outToday : st.out);
+            let list = isIn ? (isToday ? st.inToday : st.in) : (isToday ? st.outToday : st.out);
+            if (st.mine) list = isIn ? (st.myIn || []) : (st.myOut || []);
             const q = (document.getElementById('monthlyTxSearch')?.value || '').trim().toLowerCase();
             const rows = list.filter(function (h) {
                 if (!q) return true;
@@ -8013,7 +8055,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             });
             const totalQty = rows.reduce(function (s, h) { return s + _txQty(h); }, 0);
             const t = document.getElementById('monthlyTxTitle');
-            if (t) t.innerHTML = (isIn ? '<i class="fas fa-box-open text-success me-2"></i>รายการรับเข้า' : '<i class="fas fa-dolly text-danger me-2"></i>รายการเบิกออก') + (isToday ? ' วันนี้ ' + escapeHtml(st.todayLabel) : ' เดือนนี้ ' + escapeHtml(st.label));
+            if (t) t.innerHTML = (isIn ? '<i class="fas fa-box-open text-success me-2"></i>รายการรับเข้า' : '<i class="fas fa-dolly text-danger me-2"></i>รายการเบิกออก') + (st.mine ? ' ของฉัน' : '') + (isToday ? ' วันนี้ ' + escapeHtml(st.todayLabel) : ' เดือนนี้ ' + escapeHtml(st.label));
             const sm = document.getElementById('monthlyTxSummary');
             if (sm) sm.textContent = formatNumber(rows.length) + ' รายการ · รวม ' + formatNumber(totalQty) + ' ชิ้น' + (q ? ' (กรองจากทั้งหมด ' + formatNumber(list.length) + ' รายการ)' : '');
             const head = document.getElementById('monthlyTxHead'), body = document.getElementById('monthlyTxBody');
