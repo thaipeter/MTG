@@ -15770,6 +15770,9 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                 callGAS('webCountReview', [_stWkAdminPayload({ weekId: r.weekId, itemCode: r.itemCode, action: action, remark: remark || '' })], function(res) {
                     Swal.close();
                     if (!res || res.success === false) { Swal.fire({ icon: 'error', title: 'ไม่สำเร็จ', text: String((res && res.error) || '') }); return; }
+                    // เอารายการนี้ออกจากคิวทันที (ไม่ต้องรีหน้า) แล้วค่อยโหลดคิวจริงตามหลัง
+                    _stWkReviewItems = _stWkReviewItems.filter(function(x) { return !(x.weekId === r.weekId && x.itemCode === r.itemCode); });
+                    renderCountReview();
                     if (action === 'retro') {
                         stMgmtState.sessionId = r.weekId;
                         try { switchStockTakeTab('diff'); } catch (e) {}
@@ -15778,6 +15781,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                         _stToast(action === 'adjust' ? 'ปรับยอดแล้ว' : 'ปล่อยผ่านแล้ว', 'ok');
                     }
                     loadStockWeekCard();
+                    loadCountReview();
                 }, function(err) { Swal.close(); Swal.fire({ icon: 'error', title: 'ไม่สำเร็จ', text: String(err) }); });
             };
             const nm = escapeHtml(r.itemName), d = (r.diff > 0 ? '+' : '') + formatNumber(r.diff);
