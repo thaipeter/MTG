@@ -3248,6 +3248,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                                     </div>
                                     <div class="d-flex gap-2">
                                         <button class="btn btn-outline-primary fw-bold btn-sm shadow-sm bg-white" onclick="printAppScannerQR()"><i class="fas fa-external-link-alt me-1"></i> QR หน้าสแกน</button>
+                                        <button class="btn btn-success fw-bold btn-sm shadow-sm" onclick="printNewQR()" title="เลือกรายการที่เพิ่มใหม่ทั้งหมดในช่วงที่กำหนด แล้วพิมพ์ QR"><i class="fas fa-bolt me-1"></i> พิมพ์ QR รายการใหม่</button>
                                         <button class="btn btn-theme fw-bold btn-sm shadow-sm" onclick="printBulkQRCodes()"><i class="fas fa-print me-1"></i> พิมพ์คิวอาร์ที่เลือก (<span id="qrSelectedCount">0</span>)</button>
                                     </div>
                                 </div>
@@ -3259,6 +3260,13 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                                         <option value="all">📊 ทุกสถานะสต็อก</option>
                                         <option value="inStock">✅ มีจำนวนคงเหลือ (มากกว่า 0)</option>
                                         <option value="outOfStock">⛔ หมดสต็อก (เท่ากับ 0)</option>
+                                    </select>
+                                    <select class="form-select w-auto shadow-none border-light bg-white fw-medium ms-2" id="qrNewFilter" onchange="filterQRTable()">
+                                        <option value="0">🆕 รายการเพิ่มใหม่: ทั้งหมด</option>
+                                        <option value="1">เพิ่มใหม่ภายในวันนี้</option>
+                                        <option value="3">เพิ่มใหม่ภายใน 3 วัน</option>
+                                        <option value="7">เพิ่มใหม่ภายใน 7 วัน</option>
+                                        <option value="30">เพิ่มใหม่ภายใน 30 วัน</option>
                                     </select>
                                     <div class="search-box mx-2"><i class="fas fa-search text-primary"></i><input type="text" class="form-control form-control-lg shadow-sm" id="qrSearchInput" placeholder="พิมพ์ค้นหา รหัส, ชื่อ..." onkeyup="filterQRTable()"></div>
                                 </div>
@@ -12119,6 +12127,9 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             // ★ เพิ่ม: ตัวกรอง "รายการที่มีจำนวนอยู่" — กรองตามสต็อกคงเหลือ (item.stock) เพื่อไม่ต้องไล่ดูรายการที่หมดสต็อกแล้ว
             const stockFilterEl = document.getElementById('qrStockFilter');
             const stockFilter = stockFilterEl ? stockFilterEl.value : 'all';
+            const newEl = document.getElementById('qrNewFilter');
+            const newDays = newEl ? parseInt(newEl.value, 10) || 0 : 0;
+            const newSince = newDays > 0 ? (newDays === 1 ? (function () { const b = new Date(Date.now() + 7 * 3600 * 1000); return Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate()) - 7 * 3600 * 1000; })() : Date.now() - newDays * 86400000) : 0;
             
             let list = [];
             if(typeFilter === 'all' || typeFilter === 'items') { allData.items.forEach(i => list.push({...i, itemType: 'Items (อะไหล่)'})); }
@@ -12132,10 +12143,44 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                 if(catFilter !== '' && itemCat !== catFilter) match = false;
                 if(stockFilter === 'inStock' && !(Number(item.stock) > 0)) match = false;
                 if(stockFilter === 'outOfStock' && Number(item.stock) > 0) match = false;
+                if(newDays > 0) { const ms = itemCreatedMs(item); if(!ms || ms < newSince) match = false; }
                 return match;
             });
+            if(newDays > 0) filtered.sort((a, b) => itemCreatedMs(b) - itemCreatedMs(a));   // รายการใหม่สุดขึ้นก่อน
 
             renderQRTable(filtered);
+        }
+
+        // เวลาที่รายการถูกเพิ่ม (ms) — ใช้ createdAt ถ้ามี ไม่งั้นแปลงจากข้อความวันที่ dd/MM/yy(พ.ศ.) HH:mm เวลาไทย
+        function itemCreatedMs(item) {
+            if (item.createdAt) { const t = Date.parse(item.createdAt); if (isFinite(t)) return t; }
+            const m = String(item.date || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?/);
+            if (!m) return 0;
+            let y = parseInt(m[3], 10); if (y < 100) y += 2500; if (y > 2400) y -= 543;
+            const t = Date.parse(y + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0') + 'T' + String(m[4] || '00').padStart(2, '0') + ':' + (m[5] || '00') + ':00+07:00');
+            return isFinite(t) ? t : 0;
+        }
+
+        // ปุ่มลัด: เลือกรายการที่เพิ่มใหม่ในช่วงที่กำหนดทั้งหมด แล้วพิมพ์ QR
+        async function printNewQR() {
+            const r = await Swal.fire({ title: 'พิมพ์ QR รายการที่เพิ่มใหม่', text: 'เลือกช่วงเวลาที่เพิ่มรายการ', input: 'select',
+                inputOptions: { '1': 'วันนี้', '3': 'ภายใน 3 วัน', '7': 'ภายใน 7 วัน', '30': 'ภายใน 30 วัน' }, inputValue: '7',
+                showCancelButton: true, confirmButtonText: 'ค้นหา', cancelButtonText: 'ยกเลิก' });
+            if (!r.isConfirmed) return;
+            document.getElementById('qrNewFilter').value = r.value;
+            document.getElementById('qrTypeFilter').value = 'all';
+            document.getElementById('qrCategoryFilter').value = '';
+            document.getElementById('qrSearchInput').value = '';
+            const st = document.getElementById('qrStockFilter'); if (st) st.value = 'all';
+            filterQRTable();
+            const boxes = Array.from(document.querySelectorAll('#qrManageTable .qr-checkbox'));
+            if (!boxes.length) return Swal.fire({ icon: 'info', title: 'ไม่พบรายการใหม่', text: 'ไม่มีรายการที่เพิ่มในช่วงเวลานี้' });
+            selectedQRCodes.clear();
+            boxes.forEach(c => { c.checked = true; selectedQRCodes.add(c.value); });
+            const all = document.getElementById('qrSelectAll'); if (all) all.checked = true;
+            updateSelectedQRCount();
+            const c = await Swal.fire({ icon: 'question', title: 'พบ ' + boxes.length + ' รายการใหม่', text: 'เลือกให้ทั้งหมดแล้ว พิมพ์ QR เลยไหม (ตัดรายการที่ไม่ต้องการออกได้ในตารางก่อน)', showCancelButton: true, confirmButtonText: 'พิมพ์เลย', cancelButtonText: 'ดูรายการก่อน' });
+            if (c.isConfirmed) printBulkQRCodes();
         }
 
         function renderQRTable(data) {
