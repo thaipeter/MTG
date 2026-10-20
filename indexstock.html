@@ -94,6 +94,43 @@
 @media(max-width:576px){.ni2-list tbody td:nth-child(n+3):nth-child(-n+7){grid-column:span 6}.ni2-list tbody td:nth-child(1),.ni2-list tbody td:nth-child(2){grid-column:span 12}.tx2-stock{display:none}}
 
 /* ===== แดชบอร์ดดีไซน์ใหม่ ===== */
+/* ===== แดชบอร์ด bento + แถบ "ต้องจัดการวันนี้" (ต.ค. 69) ===== */
+.dash-act{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;margin-bottom:14px}
+.dash-act-lead{display:flex;flex-direction:column;justify-content:center;padding:0 14px 0 2px;min-width:120px}
+.dash-act-lead b{color:#fff;font-size:1.05rem}.dash-act-lead span{color:#94a3b8;font-size:.8rem}
+.dash-chip{flex:1 1 150px;display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;border:1px solid var(--border-color);background:var(--card-bg);color:#cbd5e1;cursor:pointer;text-align:left;transition:border-color .15s,background .15s}
+.dash-chip:hover{border-color:#fbbf24;background:rgba(251,191,36,.06)}
+.dash-chip .n{font-size:1.7rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;color:#64748b;min-width:1.4ch}
+.dash-chip .t{font-size:.82rem;line-height:1.25}
+.dash-chip.hot{border-color:rgba(248,113,113,.55);background:rgba(239,68,68,.09)}
+.dash-chip.hot .n{color:#f87171}
+.dash-chip.warm{border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.07)}
+.dash-chip.warm .n{color:#fbbf24}
+.dash-chip.nolink{cursor:default}
+.dash-act-ok{flex:1 1 100%;color:#4ade80;font-size:.95rem;padding:10px 4px}
+@media(min-width:768px){
+  #dashStatGrid{display:grid!important;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px!important;margin:0 0 1.5rem!important}
+  #dashStatGrid>div{width:auto!important;max-width:none!important;flex:none!important;padding:0!important;margin:0!important}
+  #dashStatGrid>div:nth-child(5){grid-column:span 6;order:1}   /* มูลค่าคลัง = hero */
+  #dashStatGrid>div:nth-child(1){grid-column:span 3;order:2}
+  #dashStatGrid>div:nth-child(2){grid-column:span 3;order:3}
+  #dashStatGrid>div:nth-child(3){grid-column:span 2;order:4}
+  #dashStatGrid>div:nth-child(4){grid-column:span 2;order:5}
+  #dashStatGrid>div:nth-child(6){grid-column:span 2;order:6}
+  #dashStatGrid>div:nth-child(7){grid-column:span 3;order:7}
+  #dashStatGrid>div:nth-child(8){grid-column:span 3;order:8}
+  #dashStatGrid .stat-card{--acc:#e8a020!important}
+  #dashStatGrid .stat-card::before{display:none}
+  #dashStatGrid .stat-value{color:#fff!important}
+  #dashStatGrid>div:nth-child(5) .stat-value{font-size:3.4rem!important;color:#fbbf24!important}
+  #dashStatGrid>div:nth-child(5) .stat-card{background:linear-gradient(135deg,rgba(251,191,36,.10),var(--card-bg) 60%)!important}
+  #dashStatGrid>div:nth-child(5) .stat-title{font-size:.9rem!important}
+  #dashStatGrid>div:nth-child(3) .stat-value,#dashStatGrid>div:nth-child(4) .stat-value,#dashStatGrid>div:nth-child(6) .stat-value{font-size:2rem!important;white-space:nowrap}
+  #dashStatGrid>div:nth-child(6) .stat-card{--acc:#f87171!important}
+  #dashStatGrid>div:nth-child(6) .stat-value{color:#f87171!important}
+  #dashStatGrid>div:nth-child(3) canvas,#dashStatGrid>div:nth-child(4) canvas,#dashStatGrid>div:nth-child(3) .stat-icon,#dashStatGrid>div:nth-child(4) .stat-icon,#dashStatGrid>div:nth-child(6) .stat-icon{display:none}
+  #dashStatGrid>div:nth-child(3) div:has(>canvas),#dashStatGrid>div:nth-child(4) div:has(>canvas){display:none}
+}
 .db2-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:1.1rem}
 .db2-title{font-size:1.9rem;font-weight:800;color:#fff;margin:0;letter-spacing:-.3px}
 .db2-sub{color:#94a3b8;font-size:.9rem;margin:2px 0 0}
@@ -2505,8 +2542,17 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             <p class="db2-sub"><i class="far fa-calendar-alt me-1"></i><span id="db2Today">-</span> · ภาพรวมระบบคลังสินค้าประจำวัน</p>
                         </div>
                     </div>
+                    <!-- ต้องจัดการวันนี้ -->
+                    <div class="dash-act" id="dashActionStrip" aria-label="ต้องจัดการวันนี้">
+                        <div class="dash-act-lead"><b>ต้องจัดการ</b><span>กดเพื่อไปทำต่อ</span></div>
+                        <button type="button" class="dash-chip" data-k="low" onclick="showLowStock()"><span class="n">0</span><span class="t">อะไหล่ต่ำกว่าเกณฑ์<br>ต้องสั่งเติม</span></button>
+                        <button type="button" class="dash-chip" data-k="po" onclick="goToPO()"><span class="n">0</span><span class="t">ใบสั่งซื้อ<br>ค้างส่ง</span></button>
+                        <button type="button" class="dash-chip" data-k="borrow" onclick="goTo('borrowedItems')"><span class="n">0</span><span class="t">เครื่องมือ<br>ถูกยืมออก</span></button>
+                        <button type="button" class="dash-chip" data-k="slip" onclick="if(currentUserProfile&&currentUserProfile.role==='admin')goTo('replacementSlip')"><span class="n">0</span><span class="t">ค้างคืน<br>จากใบแทน</span></button>
+                        <div class="dash-act-ok d-none" id="dashActionOk"><i class="fas fa-circle-check me-1"></i> วันนี้ไม่มีอะไรค้างต้องจัดการ</div>
+                    </div>
                     <!-- Statistics Cards with Sparklines -->
-                    <div class="row g-2 mb-4">
+                    <div class="row g-2 mb-4" id="dashStatGrid">
                         <div class="col-6 col-md-3 col-sm-6">
                             <div class="stat-card border-top-0 border-end-0 border-bottom-0 border-start border-primary border-4">
                                 <div class="d-flex justify-content-between align-items-start">
@@ -9556,6 +9602,34 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             populateCategoryDatalist('bulkMoveCategorySelect', type); // ใช้ตัวเดียวกับ datalist หมวดหมู่ในโมดัลแก้ไขรายการ — โชว์เฉพาะหมวดที่มีอยู่แล้วจริง
             bulkMoveCategoryModal.show();
         }
+
+
+        // ===== แถบ "ต้องจัดการ" — อ่านตัวเลขจากการ์ดที่มีอยู่แล้ว ไม่ต้องเรียก API เพิ่ม =====
+        (function () {
+            const src = { low: 'metricLowStockCount', po: 'metricPendingPOCount', borrow: 'metricBorrowedCount', slip: 'count-slip-borrowing' };
+            function refresh() {
+                const strip = document.getElementById('dashActionStrip'); if (!strip) return;
+                let total = 0;
+                strip.querySelectorAll('.dash-chip').forEach(ch => {
+                    const el = document.getElementById(src[ch.dataset.k]);
+                    const n = el ? (parseInt(String(el.textContent).replace(/[^0-9]/g, ''), 10) || 0) : 0;
+                    ch.querySelector('.n').textContent = n;
+                    ch.classList.toggle('hot', n > 0 && (ch.dataset.k === 'low' || ch.dataset.k === 'slip'));
+                    ch.classList.toggle('warm', n > 0 && (ch.dataset.k === 'po' || ch.dataset.k === 'borrow'));
+                    if (ch.dataset.k === 'slip' && !(window.currentUserProfile && currentUserProfile.role === 'admin')) ch.classList.add('nolink');
+                    total += n;
+                });
+                const ok = document.getElementById('dashActionOk');
+                if (ok) ok.classList.toggle('d-none', total > 0);
+                strip.querySelectorAll('.dash-chip').forEach(c => c.classList.toggle('d-none', total === 0));
+                const lead = strip.querySelector('.dash-act-lead'); if (lead) lead.classList.toggle('d-none', total === 0);
+            }
+            document.addEventListener('DOMContentLoaded', function () {
+                const mo = new MutationObserver(refresh);
+                Object.values(src).forEach(id => { const el = document.getElementById(id); if (el) mo.observe(el, { childList: true, characterData: true, subtree: true }); });
+                refresh();
+            });
+        })();
 
         function openMergeItemsDialog(type) {
             const codes = Array.from(inventorySelection[type] || []);
