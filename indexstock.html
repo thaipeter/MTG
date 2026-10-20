@@ -3190,7 +3190,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     <div id="itemsBulkMoveBar" class="admin-only-element d-none align-items-center gap-3 bg-warning bg-opacity-10 border border-warning rounded-3 p-3 mb-3">
                         <i class="fas fa-layer-group text-warning fs-5"></i>
                         <span class="fw-bold">เลือกอยู่ <span id="itemsBulkMoveCount">0</span> รายการ</span>
-                        <button class="btn btn-warning btn-sm fw-bold ms-auto" onclick="openBulkMoveCategoryModal('item')"><i class="fas fa-arrow-right me-1"></i> ย้ายหมวดที่เลือก</button>
+                        <button class="btn btn-outline-danger btn-sm fw-bold ms-auto" onclick="openMergeItemsDialog('item')"><i class="fas fa-object-group me-1"></i> รวมรายการ (2 รายการ)</button>
+                        <button class="btn btn-warning btn-sm fw-bold" onclick="openBulkMoveCategoryModal('item')"><i class="fas fa-arrow-right me-1"></i> ย้ายหมวดที่เลือก</button>
                         <button class="btn btn-outline-secondary btn-sm" onclick="clearInventorySelection('item')">ล้างการเลือก</button>
                     </div>
                     <div class="table-container p-0" id="itemsTableContainer">
@@ -3220,7 +3221,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     <div id="toolsBulkMoveBar" class="admin-only-element d-none align-items-center gap-3 bg-warning bg-opacity-10 border border-warning rounded-3 p-3 mb-3">
                         <i class="fas fa-layer-group text-warning fs-5"></i>
                         <span class="fw-bold">เลือกอยู่ <span id="toolsBulkMoveCount">0</span> รายการ</span>
-                        <button class="btn btn-warning btn-sm fw-bold ms-auto" onclick="openBulkMoveCategoryModal('tool')"><i class="fas fa-arrow-right me-1"></i> ย้ายหมวดที่เลือก</button>
+                        <button class="btn btn-outline-danger btn-sm fw-bold ms-auto" onclick="openMergeItemsDialog('tool')"><i class="fas fa-object-group me-1"></i> รวมรายการ (2 รายการ)</button>
+                        <button class="btn btn-warning btn-sm fw-bold" onclick="openBulkMoveCategoryModal('tool')"><i class="fas fa-arrow-right me-1"></i> ย้ายหมวดที่เลือก</button>
                         <button class="btn btn-outline-secondary btn-sm" onclick="clearInventorySelection('tool')">ล้างการเลือก</button>
                     </div>
                     <div class="table-container p-0" id="toolsTableContainer">
@@ -9553,6 +9555,39 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             document.getElementById('bulkMoveModalCount').textContent = count;
             populateCategoryDatalist('bulkMoveCategorySelect', type); // ใช้ตัวเดียวกับ datalist หมวดหมู่ในโมดัลแก้ไขรายการ — โชว์เฉพาะหมวดที่มีอยู่แล้วจริง
             bulkMoveCategoryModal.show();
+        }
+
+        function openMergeItemsDialog(type) {
+            const codes = Array.from(inventorySelection[type] || []);
+            if (codes.length !== 2) { Swal.fire({ icon: 'info', title: 'เลือกให้ครบ 2 รายการ', text: 'ติ๊กเลือกรายการที่ซ้ำกัน 2 รายการ แล้วกด "รวมรายการ"' }); return; }
+            const list = type === 'tool' ? allData.tools : allData.items;
+            const a = list.find(i => i.code === codes[0]), b = list.find(i => i.code === codes[1]);
+            if (!a || !b) return;
+            const row = (i, idx) => `<label class="d-flex gap-2 align-items-start border rounded p-2 mb-2" style="cursor:pointer"><input type="radio" name="mergeKeep" value="${escapeHtml(i.code)}" ${idx === 0 ? 'checked' : ''} class="mt-1"><span><b>${escapeHtml(i.code)}</b> ${escapeHtml(i.name)}<br><small class="text-muted">คงเหลือ ${Number(i.stock) || 0} ${escapeHtml(i.unit || '')}</small></span></label>`;
+            Swal.fire({
+                title: 'รวมรายการซ้ำ',
+                html: `<div class="text-start"><div class="small mb-2">เลือกรายการที่ต้อง <b>เก็บไว้</b> (อีกรายการจะถูกรวมเข้ามาแล้วลบออก)</div>${row(a, 0)}${row(b, 1)}
+                       <div class="alert alert-warning small mb-0 mt-2">จำนวนคงเหลือจะบวกกัน = <b>${(Number(a.stock) || 0) + (Number(b.stock) || 0)}</b> · ประวัติทั้งหมดย้ายมารวมกัน · QR ของรายการที่ถูกรวมยังสแกนเจอรายการที่เก็บไว้ · ย้อนกลับไม่ได้</div></div>`,
+                showCancelButton: true, confirmButtonText: 'รวมเลย', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#dc3545',
+                preConfirm: () => { const r = document.querySelector('input[name="mergeKeep"]:checked'); return r ? r.value : null; }
+            }).then(res => {
+                if (!res.isConfirmed || !res.value) return;
+                const keep = res.value, dup = codes.find(c => c !== keep);
+                document.getElementById('loading').style.display = 'flex';
+                google.script.run
+                    .withSuccessHandler(function(r) {
+                        document.getElementById('loading').style.display = 'none';
+                        if (!r.success) { Swal.fire({ icon: 'error', title: 'รวมรายการไม่สำเร็จ', text: r.error }); return; }
+                        const k = list.find(i => i.code === keep), d = list.find(i => i.code === dup);
+                        if (k) { k.stock = r.newStock; if (d) { if (!Number(k.price) && Number(d.price)) k.price = d.price; if ((!k.imageUrl || k.imageUrl === '-') && d.imageUrl) k.imageUrl = d.imageUrl; if (!k.location && d.location) k.location = d.location; } }
+                        const di = list.findIndex(i => i.code === dup); if (di >= 0) list.splice(di, 1);
+                        clearInventorySelection(type);
+                        onDataLoaded(allData);
+                        Swal.fire({ icon: 'success', title: 'รวมรายการสำเร็จ', html: `เก็บ <b>${escapeHtml(keep)}</b> คงเหลือรวม <b>${r.newStock}</b>`, timer: 2500, showConfirmButton: false });
+                    })
+                    .withFailureHandler(window._gasGenericFail)
+                    .webMergeItems({ userId: currentUserProfile.uid, userName: currentUserProfile.name, keepCode: keep, dupCode: dup });
+            });
         }
 
         function submitBulkMoveCategory() {
