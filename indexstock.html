@@ -9638,6 +9638,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 icon: 'warning', title: 'ลบรายการนี้?',
                 html: `<div class="text-start"><b>${escapeHtml(code)}</b> ${escapeHtml(name)}<br><small class="text-muted">คงเหลือ ${stock}</small>
                        <div class="alert alert-warning small mt-2 mb-0">ลบได้เฉพาะรายการที่ยังไม่เคยถูกเบิก/ยืม/สั่งซื้อ (เช่นเพิ่มผิด) ถ้าเคยใช้งานแล้วระบบจะไม่ยอมลบ ให้ใช้ "รวมรายการ" แทน · ย้อนกลับไม่ได้</div></div>`,
+                input: 'text', inputPlaceholder: 'พิมพ์รหัส ' + code + ' เพื่อยืนยัน', inputAttributes: { autocomplete: 'off' },
+                preConfirm: (v) => { if (String(v || '').trim().toUpperCase() !== String(code).trim().toUpperCase()) { Swal.showValidationMessage('รหัสไม่ตรง กรุณาพิมพ์ ' + code); return false; } return true; },
                 showCancelButton: true, confirmButtonText: 'ลบเลย', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#dc3545'
             }).then(res => {
                 if (!res.isConfirmed) return;
