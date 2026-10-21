@@ -8758,7 +8758,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     return;
                 }
                 damagedItems.forEach(item => {
-                    let tr = document.createElement('tr'); let safeName = String(item.name || '').replace(/'/g, "\\'"); let safeCode = String(item.code || '').replace(/'/g, "\\'"); let safeUnit = String(item.unit || '').replace(/'/g, "\\'");
+                    let tr = document.createElement('tr'); let safeName = _jsAttr(item.name || ''); let safeCode = _jsAttr(item.code || ''); let safeUnit = _jsAttr(item.unit || '');
                     let actionBtn = currentUserProfile.role === 'admin' ? `<button class="btn btn-sm btn-success shadow-sm fw-bold w-100" onclick="openRepairModal('${safeCode}', '${safeName}', '${safeUnit}', ${item.qty})"><i class="fas fa-tools"></i> ซ่อมแล้ว</button>` : `<span class="badge bg-light text-muted border w-100 py-2">เฉพาะ Admin</span>`;
                     tr.innerHTML = `<td>${escapeHtml(item.code)}</td><td>${escapeHtml(item.name)}</td><td class="text-center">${formatNumber(item.qty)}</td><td>${escapeHtml(item.unit)}</td><td class="text-center">-</td>`;
                     tbody.appendChild(tr);
@@ -8920,7 +8920,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 const tbody = document.querySelector(`#${tableId} tbody`); if(!tbody) return; tbody.innerHTML = '';
                 if (borrows.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-success fw-bold"><i class="fas fa-check-circle fs-3 d-block mb-2"></i> ไม่มีรายการค้างส่งคืน</td></tr>'; return; }
                 borrows.forEach(b => { 
-                    let tr = document.createElement('tr'); let safeName = String(b.itemName || '').replace(/'/g, "\\'"); let safeCode = String(b.itemCode || '').replace(/'/g, "\\'"); let safeReqId = String(b.reqId || '').replace(/'/g, "\\'");
+                    let tr = document.createElement('tr'); let safeName = _jsAttr(b.itemName || ''); let safeCode = _jsAttr(b.itemCode || ''); let safeReqId = _jsAttr(b.reqId || '');
                     const isAdmin = currentUserProfile.role === 'admin';
                     let actionBtn = isAdmin
                         ? `<button class="btn btn-sm btn-info text-white fw-bold shadow-sm text-nowrap" onclick="returnBorrowedItem('${safeReqId}', '${safeCode}', '${safeName}', ${b.qty})"><i class="fas fa-undo me-1"></i>กดรับคืน</button><button class="btn btn-sm btn-outline-warning fw-bold text-nowrap" onclick="rplFromBorrow('${safeReqId}')" title="ออกใบแทนพร้อมเติมข้อมูลจากรายการยืมนี้"><i class="fas fa-clone me-1"></i>ออกใบแทน</button>`
@@ -9432,7 +9432,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     let tr = document.createElement('tr'); const isLow = item.stock <= item.min;
                     const isDamaged = window.damagedCodesSet && window.damagedCodesSet.has(String(item.code));
                     const statusBadge = isDamaged ? `<span class="badge bg-danger bg-opacity-10 text-danger px-3 py-2"><i class="fas fa-heart-broken me-1"></i> ชำรุด/รอซ่อม</span>` : isLow ? `<span class="badge bg-danger bg-opacity-10 text-danger px-3 py-2"><i class="fas fa-exclamation-circle me-1"></i> ควรสั่งเพิ่ม</span>` : `<span class="badge bg-success bg-opacity-10 text-success px-3 py-2"><i class="fas fa-check-circle me-1"></i> สต็อกปกติ</span>`;
-                    let actionButtons = ''; let safeName = String(item.name || '').replace(/'/g, "\\'"); let safeCode = String(item.code || '').replace(/'/g, "\\'"); let displayCat = getItemCategory(item); let safeCat = String(displayCat).replace(/'/g, "\\'"); let safeUnit = String(item.unit || '').replace(/'/g, "\\'"); let safeType = String(type || '').replace(/'/g, "\\'"); let safeLocation = String(item.location || '').replace(/'/g, "\\'");
+                    let actionButtons = ''; let safeName = _jsAttr(item.name || ''); let safeCode = _jsAttr(item.code || ''); let displayCat = getItemCategory(item); let safeCat = _jsAttr(displayCat); let safeUnit = _jsAttr(item.unit || ''); let safeType = _jsAttr(type || ''); let safeLocation = _jsAttr(item.location || '');
                     let displayLocation = item.location ? `<span class="badge bg-light text-secondary border"><i class="fas fa-map-marker-alt text-danger me-1"></i> ${escapeHtml(item.location)}</span>` : '<small class="text-muted">-</small>';
                     
                     // รูปภาพอะไหล่
@@ -9630,6 +9630,9 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 refresh();
             });
         })();
+
+        // escape ค่าที่ฝังใน onclick="fn('...')" — กัน ' " \ & < > ทำให้ปุ่มพัง (เช่นชื่อมีเครื่องหมาย " )
+        function _jsAttr(v) { return String(v == null ? '' : v).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\r?\n/g, ' '); }
 
         function deleteProductItem(code, name, type) {
             const list = type === 'tool' ? allData.tools : allData.items;
@@ -12336,7 +12339,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
 
             data.forEach(item => {
                 const tr = document.createElement('tr'); const cat = getItemCategory(item);
-                const safeName = String(item.name).replace(/'/g, "\\'"); const safeCode = String(item.code).replace(/'/g, "\\'");
+                const safeName = _jsAttr(item.name); const safeCode = _jsAttr(item.code);
                 const isChecked = selectedQRCodes.has(item.code);
                 if (!isChecked) allChecked = false;
                 countRendered++;
