@@ -9466,7 +9466,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     
                     if (currentUserProfile.role === 'admin') {
                         let qrBtn = `<button class="btn btn-sm btn-light text-primary border me-1" onclick="showQRCode('${safeCode}', '${safeName}')" title="แสดง QR Code"><i class="fas fa-qrcode"></i></button>`;
-                        let editBtn = `<button class="btn btn-sm btn-light text-warning border" onclick="openEditItemModal('${safeCode}', '${safeName}', '${safeCat}', '${safeUnit}', ${item.min}, '${safeType}', '${safeLocation}', ${Number(item.price) || 0})" title="แก้ไข"><i class="fas fa-edit"></i></button>`;
+                        let editBtn = `<button class="btn btn-sm btn-light text-warning border" onclick="openEditItemModal('${safeCode}', '${safeName}', '${safeCat}', '${safeUnit}', ${item.min}, '${safeType}', '${safeLocation}', ${Number(item.price) || 0})" title="แก้ไข"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-light text-danger border ms-1" onclick="deleteProductItem('${safeCode}', '${safeName}', '${safeType}')" title="ลบรายการ"><i class="fas fa-trash-alt"></i></button>`;
                         if(type === 'item') { actionButtons = `<div class="d-flex justify-content-center gap-1">${qrBtn}${editBtn}<button class="btn btn-sm btn-light text-success border ms-1" onclick="openAdjustModal('${safeCode}', '${safeName}', '${safeUnit}', 'add')" title="เพิ่มยอดแมนนวล"><i class="fas fa-plus"></i></button><button class="btn btn-sm btn-light text-danger border" onclick="openAdjustModal('${safeCode}', '${safeName}', '${safeUnit}', 'remove')" title="ลดยอดแมนนวล"><i class="fas fa-minus"></i></button></div>`; } 
                         else if (type === 'tool') { actionButtons = `<div class="d-flex justify-content-center gap-1">${qrBtn}${editBtn}<button class="btn btn-sm btn-light text-danger border ms-1" onclick="openDamageModal('${safeCode}', '${safeName}', '${safeUnit}')" title="แจ้งเสีย"><i class="fas fa-heart-broken"></i></button><button class="btn btn-sm btn-light text-success border" onclick="openRepairModal('${safeCode}', '${safeName}', '${safeUnit}', 1)" title="ซ่อมแล้ว"><i class="fas fa-tools"></i></button></div>`; }
                     } else {
@@ -9630,6 +9630,31 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 refresh();
             });
         })();
+
+        function deleteProductItem(code, name, type) {
+            const list = type === 'tool' ? allData.tools : allData.items;
+            const it = list.find(i => i.code === code); const stock = it ? Number(it.stock) || 0 : 0;
+            Swal.fire({
+                icon: 'warning', title: 'ลบรายการนี้?',
+                html: `<div class="text-start"><b>${escapeHtml(code)}</b> ${escapeHtml(name)}<br><small class="text-muted">คงเหลือ ${stock}</small>
+                       <div class="alert alert-warning small mt-2 mb-0">ลบได้เฉพาะรายการที่ยังไม่เคยถูกเบิก/ยืม/สั่งซื้อ (เช่นเพิ่มผิด) ถ้าเคยใช้งานแล้วระบบจะไม่ยอมลบ ให้ใช้ "รวมรายการ" แทน · ย้อนกลับไม่ได้</div></div>`,
+                showCancelButton: true, confirmButtonText: 'ลบเลย', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#dc3545'
+            }).then(res => {
+                if (!res.isConfirmed) return;
+                document.getElementById('loading').style.display = 'flex';
+                google.script.run
+                    .withSuccessHandler(function(r) {
+                        document.getElementById('loading').style.display = 'none';
+                        if (!r.success) { Swal.fire({ icon: 'error', title: 'ลบไม่ได้', text: r.error }); return; }
+                        const i = list.findIndex(x => x.code === code); if (i >= 0) list.splice(i, 1);
+                        if (inventorySelection[type]) inventorySelection[type].delete(code);
+                        onDataLoaded(allData);
+                        Swal.fire({ icon: 'success', title: 'ลบรายการแล้ว', timer: 1800, showConfirmButton: false });
+                    })
+                    .withFailureHandler(window._gasGenericFail)
+                    .webDeleteProduct({ userId: currentUserProfile.uid, userName: currentUserProfile.name, code: code });
+            });
+        }
 
         function openMergeItemsDialog(type) {
             const codes = Array.from(inventorySelection[type] || []);
