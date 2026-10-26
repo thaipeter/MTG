@@ -8674,7 +8674,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
 
             const dotColor = isOut ? '#ef4444' : '#22c55e';
             const badgeBg = isOut ? '#3a1e1e' : '#1e3a2f';
-            const amountStr = (isOut ? '-' : '+') + log.amount;
+            const amountStr = (isOut ? '-' : '+') + String(log.amount == null ? '' : log.amount).replace(/^[+\-−]\s*/, '');
 
             // ── มุมมองที่ 1: Grid การ์ด ──
             if (cardList) {
@@ -9344,7 +9344,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     const remarkText = log.remark ? String(log.remark) : '-';
                     const dotColor = isOut ? '#ef4444' : '#22c55e';
                     const badgeBg = isOut ? '#3a1e1e' : '#1e3a2f';
-                    const amountStr = (isOut ? '-' : '+') + log.amount;
+                    const amountStr = (isOut ? '-' : '+') + String(log.amount == null ? '' : log.amount).replace(/^[+\-−]\s*/, '');
                     let slipOnclick = '';
                     if (actLower.includes('เบิก') || actLower.includes('ยืม')) {
                         const safeCode = String(log.code || '').replace(/'/g, "\\'");
