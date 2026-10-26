@@ -11421,6 +11421,10 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             const rows = tbody.querySelectorAll('tr');
             if (rows.length === 0) return Swal.fire({icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณาเพิ่มรายการอย่างน้อย 1 รายการ'});
             
+            for (let i = 0; i < rows.length; i++) {
+                const q = parseFloat(rows[i].querySelector('[data-qty-input]').value);
+                if (!(q >= 1)) { Swal.fire({icon: 'warning', title: 'จำนวนต้องมากกว่า 0', text: `แถว ${i + 1}: กรุณาใส่จำนวนรับเข้าอย่างน้อย 1`}); return; }
+            }
             let payloads = [];
             rows.forEach((row, idx) => {
                 const code = row.querySelector('[data-code-input]').value.trim();

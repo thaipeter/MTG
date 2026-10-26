@@ -3634,6 +3634,7 @@ function submitNewItem() {
   if (!code) { showToast('กรุณากดสร้างรหัสก่อน', 'error'); return; }
   if (!name) { showToast('กรุณากรอกชื่อรายการ', 'error'); return; }
   if (!unit) { showToast('กรุณากรอกหน่วย', 'error'); return; }
+  if (!(qty >= 1)) { showToast('จำนวนต้องมากกว่า 0', 'error'); return; }
 
   // เช็คชื่อรายการซ้ำกับข้อมูลที่มีอยู่ (client-side guard)
   const existingNames = [
@@ -3962,7 +3963,7 @@ async function tvSave() {
     }
     // 2) สร้างรายการทั้งหมดในครั้งเดียว
     const loc = (tvLocVal || '').trim();
-    const payload = newRows.map(r => ({ type: 'Tools', category: r.category, code: r.code, name: r.full, unit: r.unit, min: 0, qty: r.qty, location: loc,
+    const payload = newRows.map(r => ({ type: 'Tools', category: r.category, code: r.code, name: r.full, unit: r.unit, min: 0, qty: Math.max(1, Number(r.qty) || 1), location: loc,
       remark: 'ขึ้นทะเบียนจากรูปถ่าย (AI ช่วยร่าง)', user: me.name, userId: me.uid }));
     if (payload.length) await tvCall('webAddNewItems', [payload]);
     // 2.5) บวกจำนวนเข้ารายการเดิม (บันทึกเป็นรับเข้า)
