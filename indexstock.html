@@ -95,6 +95,10 @@
 
 /* ===== แดชบอร์ดดีไซน์ใหม่ ===== */
 .swal2-select option,select.form-select option{color:#1e293b;background:#fff}
+.rh-pill{background:transparent;color:#cbd5e1;border:1px solid #2a2f3d;border-radius:999px;padding:3px 12px;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.rh-pill b{color:#fff;margin-left:2px}.rh-pill:hover{border-color:#64748b}.rh-pill.active{background:#fbbf24;border-color:#fbbf24;color:#111;font-weight:700}.rh-pill.active b,.rh-pill.active i{color:#111!important}
+.rh-chip{display:inline-block;background:#232838;border:1px solid #2a2f3d;color:#cbd5e1;border-radius:6px;padding:0 7px;font-size:11.5px;margin:0 4px 3px 0}
+.rh-chip em{font-style:normal;color:#8b94a7;margin-right:3px}
 /* ===== แดชบอร์ด bento + แถบ "ต้องจัดการวันนี้" (ต.ค. 69) ===== */
 .dash-act{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;margin-bottom:14px}
 .dash-act-lead{display:flex;flex-direction:column;justify-content:center;padding:0 14px 0 2px;min-width:120px}
@@ -2236,12 +2240,14 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         </div>
                         <!-- Filter -->
                         <div class="d-flex flex-column gap-2 align-items-end" style="flex-shrink:0">
-                            <button type="button" id="rhPrintAllBtn" class="btn btn-sm fw-bold admin-only-element" style="background:#232838;color:#e0e0e0;border:1px solid #2a2f3d;border-radius:8px;white-space:nowrap" onclick="printAllReceiptsForItem()" title="พิมพ์ใบเบิกทั้งหมดของสินค้านี้ (เฉพาะ Admin)"><i class="fas fa-file-invoice me-1"></i> ทั้งหมด</button>
-                            <select id="rhTypeFilter" class="form-select form-select-sm" style="background:transparent;color:#e0e0e0;border:1px solid #2a2f3d;border-radius:8px;min-width:140px" onchange="renderItemHistory()">
-                                <option value="">📋 ทั้งหมด</option>
-                                <option value="in">📥 รับเข้า</option>
-                                <option value="out">📤 เบิกออก</option>
-                            </select>
+                            <button type="button" id="rhPrintAllBtn" class="btn btn-sm fw-bold admin-only-element" style="background:#232838;color:#e0e0e0;border:1px solid #2a2f3d;border-radius:8px;white-space:nowrap" onclick="printAllReceiptsForItem()" title="พิมพ์ใบเบิกทั้งหมดของสินค้านี้ (เฉพาะ Admin)"><i class="fas fa-print me-1"></i> พิมพ์ใบเบิกของรายการนี้</button>
+                            <input type="hidden" id="rhTypeFilter" value="">
+                            <div class="d-flex align-items-center gap-1 flex-wrap justify-content-end" id="rhPills">
+                                <span style="color:#6b7280;font-size:12px" class="me-1">แสดง:</span>
+                                <button type="button" class="rh-pill active" data-v="" onclick="setRhFilter('')">ทั้งหมด <b id="rhCntAll">0</b></button>
+                                <button type="button" class="rh-pill" data-v="in" onclick="setRhFilter('in')"><i class="fas fa-arrow-down" style="color:#22c55e"></i> รับเข้า <b id="rhCntIn">0</b></button>
+                                <button type="button" class="rh-pill" data-v="out" onclick="setRhFilter('out')"><i class="fas fa-arrow-up" style="color:#ef4444"></i> เบิก/ยืม <b id="rhCntOut">0</b></button>
+                            </div>
                             <span class="badge rounded-pill px-3" id="rhTotalCount" style="background:#22c55e;color:#fff">0 ครั้ง</span>
                         </div>
                     </div>
@@ -9871,6 +9877,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             modal._fullHistory = null; // เคลียร์ผลลัพธ์เก่าจากสินค้าตัวก่อนหน้า
             modal._archiveLoaded = false; // ยังไม่รู้ผลจาก Archive ว่าเจอหรือไม่เจอ
             document.getElementById('rhTypeFilter').value = '';
+            document.querySelectorAll('#rhPills .rh-pill').forEach(b => b.classList.toggle('active', b.dataset.v === ''));
             document.getElementById('rhItemName').textContent = item.name;
             document.getElementById('rhItemCode').textContent = item.code;
             document.getElementById('rhItemCat').textContent = getItemCategory(item) || '-';
@@ -9927,6 +9934,28 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
 
         const RH_PAGE_SIZE = 15;
         const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+        function setRhFilter(v) {
+            document.getElementById('rhTypeFilter').value = v;
+            document.querySelectorAll('#rhPills .rh-pill').forEach(b => b.classList.toggle('active', b.dataset.v === v));
+            renderItemHistory();
+        }
+        // แยกหมายเหตุที่อยู่ใน [ ... ] เป็นป้ายเล็ก (ไลน์/เครื่อง/กะ ฯลฯ) ส่วนที่เหลือเป็นข้อความ
+        function _rhParseRemark(raw) {
+            let txt = String(raw || ''); const chips = [];
+            for (let n = 0; n < 4; n++) {
+                const before = txt;
+                txt = txt.replace(/\[([^\[\]]*)\]/g, function (_, inner) {
+                    inner.split('|').forEach(function (part) {
+                        part = part.trim(); if (!part) return;
+                        const k = part.indexOf(':');
+                        if (k > 0 && k < 14) chips.push([part.slice(0, k).trim(), part.slice(k + 1).trim()]); else chips.push(['', part]);
+                    });
+                    return ' ';
+                });
+                if (txt === before) break;
+            }
+            return { chips: chips, text: txt.replace(/[\[\]]/g, ' ').replace(/\s+/g, ' ').trim() };
+        }
         function renderItemHistory() {
             const modal = document.getElementById('receiveHistoryModal');
             const itemCode = modal._itemCode;
@@ -9938,6 +9967,16 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             const outActions = ['เบิก', 'ยืม', 'แจ้งชำรุด'];
             // ถ้าเคยโหลดประวัติทั้งหมด (รวม Archive) มาแล้ว ใช้ชุดนั้นแทน allData.history ที่จำกัดแค่ 500 แถวล่าสุด
             const sourceLogs = (modal._fullHistory && modal._fullHistory.length) ? modal._fullHistory : (allData.history || []);
+            (function () {
+                let cIn = 0, cOut = 0;
+                sourceLogs.forEach(l => {
+                    if (String(l.code || '').trim() !== itemCode) return;
+                    const a = String(l.action || '').trim().toLowerCase();
+                    if (inActions.some(x => a.includes(x.toLowerCase()))) cIn++; else if (outActions.some(x => a.includes(x.toLowerCase()))) cOut++;
+                });
+                const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+                set('rhCntAll', cIn + cOut); set('rhCntIn', cIn); set('rhCntOut', cOut);
+            })();
             const logs = sourceLogs.filter(log => {
                 const act  = String(log.action || '').trim().toLowerCase();
                 const code = String(log.code   || '').trim();
@@ -9998,6 +10037,9 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     html += `<div style="position:sticky;top:0;background:#181c24;padding:4px 0 8px;z-index:1"><span style="display:inline-flex;width:fit-content;background:#232838;color:#e0e0e0;font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;white-space:nowrap">${monthLabel}</span></div>`;
                 }
                 const isLast = idx === visible.length - 1;
+                const _rm = _rhParseRemark(log.remark);
+                const rmHtml = (_rm.chips.length || _rm.text) ? `<div style="font-size:12.5px;line-height:1.5">${_rm.chips.map(c => `<span class="rh-chip">${c[0] ? '<em>' + escapeHtml(c[0]) + '</em>' : ''}${escapeHtml(c[1])}</span>`).join('')}${_rm.text ? `<span style="color:#cbd5e1">${escapeHtml(_rm.text)}</span>` : ''}</div>` : '';
+                const dateShort = d ? `${d.getDate()} ${['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'][d.getMonth()]}` : (timeParts[0] || '-');
                 html += `
                     <div class="d-flex" style="gap:10px">
                         <div class="d-flex flex-column align-items-center" style="flex-shrink:0">
@@ -10005,8 +10047,9 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             ${isLast ? '' : `<div style="width:1px;flex:1;background:#2a2f3d;min-height:24px"></div>`}
                         </div>
                         <div style="flex:1;min-width:0;padding-bottom:14px">
-                            <p class="mb-0" style="font-size:13px"><span class="fw-bold" style="color:${actionColor}">${actionLabel} ${amountStr}</span> <span style="color:#6b7280">· เหลือ ${log.balance||'-'}</span></p>
-                            <p class="mb-0" style="color:#6b7280;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${timeParts[0]||'-'} ${timeParts[1]||''} · ${displayUser}${log.remark ? ' · ' + log.remark : ''}</p>
+                            <p class="mb-0" style="font-size:14px"><span class="fw-bold" style="color:${actionColor}">${actionLabel} ${amountStr}</span> <span style="color:#8b94a7">→ เหลือ ${log.balance||'-'}</span>${valueStr}</p>
+                            <p class="mb-1" style="color:#8b94a7;font-size:12.5px">${dateShort} ${timeParts[1]||''} · <span style="color:#cbd5e1">${escapeHtml(displayUser)}</span></p>
+                            ${rmHtml}
                         </div>
                     </div>`;
             });
