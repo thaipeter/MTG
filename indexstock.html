@@ -94,6 +94,7 @@
 @media(max-width:576px){.ni2-list tbody td:nth-child(n+3):nth-child(-n+7){grid-column:span 6}.ni2-list tbody td:nth-child(1),.ni2-list tbody td:nth-child(2){grid-column:span 12}.tx2-stock{display:none}}
 
 /* ===== แดชบอร์ดดีไซน์ใหม่ ===== */
+.swal2-select option,select.form-select option{color:#1e293b;background:#fff}
 /* ===== แดชบอร์ด bento + แถบ "ต้องจัดการวันนี้" (ต.ค. 69) ===== */
 .dash-act{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;margin-bottom:14px}
 .dash-act-lead{display:flex;flex-direction:column;justify-content:center;padding:0 14px 0 2px;min-width:120px}
@@ -3315,6 +3316,10 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                                         <option value="3">เพิ่มใหม่ภายใน 3 วัน</option>
                                         <option value="7">เพิ่มใหม่ภายใน 7 วัน</option>
                                         <option value="30">เพิ่มใหม่ภายใน 30 วัน</option>
+                                    </select>
+                                    <select class="form-select w-auto shadow-none border-light bg-white fw-medium ms-2" id="qrNewMode" onchange="filterQRTable()" title="ใช้ร่วมกับตัวกรอง 'รายการเพิ่มใหม่'">
+                                        <option value="created">เฉพาะรายการที่สร้างใหม่</option>
+                                        <option value="received">สร้างใหม่ + มีรับเข้าในช่วงนั้น</option>
                                     </select>
                                     <div class="search-box mx-2"><i class="fas fa-search text-primary"></i><input type="text" class="form-control form-control-lg shadow-sm" id="qrSearchInput" placeholder="พิมพ์ค้นหา รหัส, ชื่อ..." onkeyup="filterQRTable()"></div>
                                 </div>
@@ -12277,6 +12282,16 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             const newDays = newEl ? parseInt(newEl.value, 10) || 0 : 0;
             const newSince = newDays > 0 ? (newDays === 1 ? (function () { const b = new Date(Date.now() + 7 * 3600 * 1000); return Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate()) - 7 * 3600 * 1000; })() : Date.now() - newDays * 86400000) : 0;
             
+            const modeEl = document.getElementById('qrNewMode');
+            const recvCodes = new Set();
+            if (newDays > 0 && modeEl && modeEl.value === 'received') {
+                (allData.history || []).forEach(h => {
+                    const a = String(h.action || '').trim().toLowerCase();
+                    if (a !== 'รับเข้า' && a !== 'new item') return;
+                    const d = parseThaiDate(h.time);
+                    if (d && d.getTime() >= newSince) recvCodes.add(String(h.code));
+                });
+            }
             let list = [];
             if(typeFilter === 'all' || typeFilter === 'items') { allData.items.forEach(i => list.push({...i, itemType: 'Items (อะไหล่)'})); }
             if(typeFilter === 'all' || typeFilter === 'tools') { allData.tools.forEach(t => list.push({...t, itemType: 'Tools (เครื่องมือ)'})); }
@@ -12289,7 +12304,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                 if(catFilter !== '' && itemCat !== catFilter) match = false;
                 if(stockFilter === 'inStock' && !(Number(item.stock) > 0)) match = false;
                 if(stockFilter === 'outOfStock' && Number(item.stock) > 0) match = false;
-                if(newDays > 0) { const ms = itemCreatedMs(item); if(!ms || ms < newSince) match = false; }
+                if(newDays > 0) { const ms = itemCreatedMs(item); if((!ms || ms < newSince) && !recvCodes.has(String(item.code))) match = false; }
                 return match;
             });
             if(newDays > 0) filtered.sort((a, b) => itemCreatedMs(b) - itemCreatedMs(a));   // รายการใหม่สุดขึ้นก่อน
@@ -12309,11 +12324,16 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
 
         // ปุ่มลัด: เลือกรายการที่เพิ่มใหม่ในช่วงที่กำหนดทั้งหมด แล้วพิมพ์ QR
         async function printNewQR() {
-            const r = await Swal.fire({ title: 'พิมพ์ QR รายการที่เพิ่มใหม่', text: 'เลือกช่วงเวลาที่เพิ่มรายการ', input: 'select',
-                inputOptions: { '1': 'วันนี้', '3': 'ภายใน 3 วัน', '7': 'ภายใน 7 วัน', '30': 'ภายใน 30 วัน' }, inputValue: '7',
+            const r = await Swal.fire({ title: 'พิมพ์ QR รายการใหม่', icon: 'question',
+                html: `<div class="text-start"><label class="small fw-bold mb-1">ช่วงเวลา</label>
+                    <select id="pnqDays" class="swal2-select" style="width:100%;margin:0 0 14px;color:#1e293b;background:#fff"><option value="1">วันนี้</option><option value="3">ภายใน 3 วัน</option><option value="7" selected>ภายใน 7 วัน</option><option value="30">ภายใน 30 วัน</option></select>
+                    <label class="small fw-bold mb-1">รายการที่จะพิมพ์</label>
+                    <select id="pnqMode" class="swal2-select" style="width:100%;margin:0;color:#1e293b;background:#fff"><option value="received" selected>สร้างใหม่ + มีการรับเข้าในช่วงนั้น</option><option value="created">เฉพาะรายการที่สร้างใหม่</option></select></div>`,
+                preConfirm: () => ({ days: document.getElementById('pnqDays').value, mode: document.getElementById('pnqMode').value }),
                 showCancelButton: true, confirmButtonText: 'ค้นหา', cancelButtonText: 'ยกเลิก' });
             if (!r.isConfirmed) return;
-            document.getElementById('qrNewFilter').value = r.value;
+            document.getElementById('qrNewFilter').value = r.value.days;
+            const _nm = document.getElementById('qrNewMode'); if (_nm) _nm.value = r.value.mode;
             document.getElementById('qrTypeFilter').value = 'all';
             document.getElementById('qrCategoryFilter').value = '';
             document.getElementById('qrSearchInput').value = '';
