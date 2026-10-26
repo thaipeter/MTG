@@ -2757,7 +2757,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                                 <div class="d-flex gap-2">
                                     <button class="btn btn-secondary btn-sm" onclick="goTo('items')"><i class="fas fa-search"></i> ค้นหา</button>
                                     <button class="btn btn-secondary btn-sm" onclick="goTo('items')"><i class="fas fa-filter"></i> ตัวกรอง</button>
-                                    <button class="btn btn-secondary btn-sm" onclick="exportMonthlySummary()"><i class="fas fa-file-export"></i> ส่งออกข้อมูล</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="openMonthEndReport()"><i class="fas fa-file-export"></i> ส่งออกข้อมูล</button>
                                 </div>
                             </div>
                             <div id="dashUnifiedCardListMobile" class="mobile-card-list" style="display:none;flex-direction:column;gap:10px"></div>
@@ -4833,9 +4833,9 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                                             <div style="background:transparent!important;border:none!important;box-shadow:none!important">
                                                 <i class="fas fa-file-excel mb-2" style="font-size:1.6rem;color:#10b981"></i>
                                                 <div class="fw-bold mb-1" style="color:rgba(255,255,255,.9);font-size:.95rem">ส่งออกสรุปรายเดือน</div>
-                                                <div class="settings-toggle-sub mb-3 text-center" style="font-size:.73rem">รวมข้อมูลสต็อก ค้างยืม PO และ Logs 30 วันเป็น Excel</div>
+                                                <div class="settings-toggle-sub mb-3 text-center" style="font-size:.73rem">เลือกเดือนได้ · ยอดรับเข้า/เบิกออกแยกรายการ + มูลค่า · Excel หรือพิมพ์เป็น PDF</div>
                                             </div>
-                                            <button class="btn btn-sm fw-bold w-100 py-2" onclick="exportMonthlySummary()" style="background:#10b981;color:#000;border-radius:8px"><i class="fas fa-download me-1"></i> ส่งออก Excel</button>
+                                            <button class="btn btn-sm fw-bold w-100 py-2" onclick="openMonthEndReport()" style="background:#10b981;color:#000;border-radius:8px"><i class="fas fa-download me-1"></i> สรุปสิ้นเดือน</button>
                                         </div>
                                     </div>
 
@@ -8784,6 +8784,120 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     }
                 });
             } catch(e) { console.error(e); }
+        }
+
+        // ===== สรุปสิ้นเดือน: เลือกเดือนได้ → Excel (หลายชีต) / พิมพ์-PDF =====
+        function openMonthEndReport() {
+            if (!currentUserProfile || currentUserProfile.role !== 'admin') { Swal.fire({ icon: 'info', title: 'เฉพาะผู้ดูแลระบบ' }); return; }
+            const now = new Date(Date.now() + 7 * 3600 * 1000);
+            const cur = now.getUTCFullYear() + '-' + String(now.getUTCMonth() + 1).padStart(2, '0');
+            Swal.fire({
+                title: 'สรุปสิ้นเดือน',
+                html: `<div class="text-start"><label class="small fw-bold mb-1">เลือกเดือน</label>
+                    <input id="meMonth" type="month" class="swal2-input" style="width:100%;margin:0 0 10px;color:#1e293b;background:#fff" value="${cur}" max="${cur}">
+                    <div class="small text-muted">ยอดรับเข้า/เบิกออก แยกรายการ + มูลค่า (ราคาทุนปัจจุบัน) เทียบเดือนก่อน แยกหมวด ผู้เบิกสูงสุด ของต่ำกว่าเกณฑ์ และค้างยืม</div></div>`,
+                showCancelButton: true, showDenyButton: true,
+                confirmButtonText: '<i class="fas fa-file-excel me-1"></i> Excel', denyButtonText: '<i class="fas fa-print me-1"></i> พิมพ์ / PDF', cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#10b981', denyButtonColor: '#3b82f6',
+                preConfirm: () => document.getElementById('meMonth').value || cur,
+                preDeny: () => document.getElementById('meMonth').value || cur
+            }).then(res => {
+                if (!(res.isConfirmed || res.isDenied)) return;
+                const ym = res.value || cur;
+                const parts = String(ym).split('-'); const year = parseInt(parts[0], 10), month = parseInt(parts[1], 10);
+                if (!year || !month) return;
+                document.getElementById('loading').style.display = 'flex';
+                google.script.run
+                    .withSuccessHandler(function (r) {
+                        document.getElementById('loading').style.display = 'none';
+                        if (!r || !r.success) { Swal.fire({ icon: 'error', title: 'ดึงข้อมูลไม่สำเร็จ', text: (r && r.error) || '' }); return; }
+                        if (res.isConfirmed) _monthEndExcel(r.report); else _monthEndPrint(r.report);
+                    })
+                    .withFailureHandler(window._gasGenericFail)
+                    .webGetMonthlyReport({ userId: currentUserProfile.uid, year: year, month: month });
+            });
+        }
+        const _TH_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+        function _meLabel(rp) { return _TH_MONTHS[rp.month - 1] + ' ' + (rp.year + 543); }
+        function _meN(v) { return Number(v || 0); }
+        function _meFmt(v, d) { return _meN(v).toLocaleString('th-TH', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }); }
+        function _meDelta(cur, prev) {
+            cur = _meN(cur); prev = _meN(prev);
+            if (!prev) return '-';
+            const p = (cur - prev) / prev * 100; return (p >= 0 ? '+' : '') + p.toFixed(1) + '%';
+        }
+        function _monthEndExcel(rp) {
+            const t = rp.totals || {}, pv = rp.prev || {}; const wb = XLSX.utils.book_new();
+            const hasPrev = _meN(pv.in_n) + _meN(pv.out_n) > 0;
+            const sum = [
+                ['สรุปคลังสินค้าประจำเดือน ' + _meLabel(rp)], [],
+                ['รายการ', 'เดือนนี้', 'เดือนก่อน', 'เปลี่ยนแปลง'],
+                ['รับเข้า (ชิ้น)', _meN(t.in_q), hasPrev ? _meN(pv.in_q) : '-', hasPrev ? _meDelta(t.in_q, pv.in_q) : '-'],
+                ['เบิกออก (ชิ้น)', _meN(t.out_q), hasPrev ? _meN(pv.out_q) : '-', hasPrev ? _meDelta(t.out_q, pv.out_q) : '-'],
+                ['จำนวนรายการที่รับเข้า', _meN(t.in_items), hasPrev ? _meN(pv.in_n) : '-', ''],
+                ['จำนวนรายการที่เบิกออก', _meN(t.out_items), hasPrev ? _meN(pv.out_n) : '-', ''],
+                ['มูลค่ารับเข้า (บาท)', _meN(t.in_v), '', ''],
+                ['มูลค่าเบิกออก (บาท)', _meN(t.out_v), '', ''],
+                ['มูลค่าคลังต้นเดือน (บาท)', _meN(t.open_v), '', ''],
+                ['มูลค่าคลังสิ้นเดือน (บาท)', _meN(t.close_v), '', ''], [],
+                ['หมายเหตุ: มูลค่าคำนวณจากราคาทุนปัจจุบันของแต่ละรายการ · ยอดต้น/สิ้นเดือนย้อนคำนวณจากประวัติ · ' + (hasPrev ? '' : 'ไม่มีข้อมูลเดือนก่อน (อาจถูกเก็บถาวรแล้ว)')]
+            ];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sum), 'สรุป');
+            const head = ['รหัส', 'ชื่อรายการ', 'หมวดหมู่', 'ประเภท', 'หน่วย', 'ราคาทุน', 'ต้นเดือน', 'รับเข้า', 'เบิกออก', 'ปรับยอด/ยืม-คืน', 'สิ้นเดือน', 'มูลค่ารับเข้า', 'มูลค่าเบิกออก', 'มูลค่าสิ้นเดือน'];
+            const items = (rp.items || []).map(r => [r.code, r.name, r.category, r.type === 'tool' ? 'เครื่องมือ' : 'อะไหล่', r.unit, _meN(r.price), _meN(r.opening), _meN(r.in_q), _meN(r.out_q), _meN(r.adj_q), _meN(r.closing), _meN(r.in_q) * _meN(r.price), _meN(r.out_q) * _meN(r.price), Math.max(_meN(r.closing), 0) * _meN(r.price)]);
+            items.push(['', 'รวม', '', '', '', '', '', _meN(t.in_q), _meN(t.out_q), '', '', _meN(t.in_v), _meN(t.out_v), _meN(t.close_v)]);
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([head].concat(items)), 'ยอดแยกรายการ');
+            const cats = [['หมวดหมู่', 'รับเข้า (ชิ้น)', 'เบิกออก (ชิ้น)', 'มูลค่ารับเข้า', 'มูลค่าเบิกออก', 'มูลค่าคงเหลือสิ้นเดือน']].concat((rp.categories || []).map(c => [c.category || '(ไม่ระบุ)', _meN(c.in_q), _meN(c.out_q), _meN(c.in_v), _meN(c.out_v), _meN(c.close_v)]));
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cats), 'แยกตามหมวด');
+            const us = [['ผู้เบิก', 'จำนวนครั้ง', 'จำนวนชิ้น']].concat((rp.users || []).map(u => [u.u, _meN(u.n), _meN(u.q)]));
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(us), 'ผู้เบิกสูงสุด');
+            const low = [['รหัส', 'ชื่อรายการ', 'คงเหลือตอนนี้', 'ขั้นต่ำ', 'หน่วย']].concat((rp.low || []).map(l => [l.code, l.name, _meN(l.stock), _meN(l.min), l.unit || '']));
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(low), 'ต่ำกว่าเกณฑ์ (ปัจจุบัน)');
+            const bor = [['รหัส', 'รายการ', 'จำนวน', 'ผู้ยืม', 'วันที่ยืม']].concat((rp.borrowed || []).map(b => [b.code, b.name, _meN(b.qty), b.borrower, String(b.date || '').substring(0, 10)]));
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bor), 'ค้างยืม (ปัจจุบัน)');
+            XLSX.writeFile(wb, 'MonthEnd_Summary_' + rp.year + '-' + String(rp.month).padStart(2, '0') + '.xlsx');
+            writeAudit('EXPORT', 'ส่งออกสรุปสิ้นเดือน ' + _meLabel(rp) + ' (Excel)');
+            Swal.fire({ icon: 'success', title: 'ส่งออกแล้ว', timer: 1600, showConfirmButton: false });
+        }
+        function _monthEndPrint(rp) {
+            const t = rp.totals || {}, pv = rp.prev || {}; const hasPrev = _meN(pv.in_n) + _meN(pv.out_n) > 0;
+            const e = escapeHtml;
+            const top = (rp.items || []).filter(r => _meN(r.out_q) > 0).slice(0, 15);
+            const rowsTop = top.map((r, i) => `<tr><td>${i + 1}</td><td>${e(r.code)}</td><td>${e(r.name)}</td><td class="r">${_meFmt(r.out_q)} ${e(r.unit)}</td><td class="r">${_meFmt(_meN(r.out_q) * _meN(r.price), 2)}</td></tr>`).join('') || '<tr><td colspan="5" class="c">ไม่มีรายการเบิก</td></tr>';
+            const rowsCat = (rp.categories || []).filter(c => _meN(c.in_q) || _meN(c.out_q)).map(c => `<tr><td>${e(c.category || '(ไม่ระบุ)')}</td><td class="r">${_meFmt(c.in_q)}</td><td class="r">${_meFmt(c.out_q)}</td><td class="r">${_meFmt(c.in_v, 2)}</td><td class="r">${_meFmt(c.out_v, 2)}</td></tr>`).join('') || '<tr><td colspan="5" class="c">-</td></tr>';
+            const rowsUsr = (rp.users || []).map(u => `<tr><td>${e(u.u)}</td><td class="r">${_meFmt(u.n)}</td><td class="r">${_meFmt(u.q)}</td></tr>`).join('') || '<tr><td colspan="3" class="c">-</td></tr>';
+            const rowsLow = (rp.low || []).slice(0, 25).map(l => `<tr><td>${e(l.code)}</td><td>${e(l.name)}</td><td class="r">${_meFmt(l.stock)}</td><td class="r">${_meFmt(l.min)}</td></tr>`).join('') || '<tr><td colspan="4" class="c">ไม่มี</td></tr>';
+            const rowsBor = (rp.borrowed || []).slice(0, 25).map(b => `<tr><td>${e(b.code)}</td><td>${e(b.name)}</td><td class="r">${_meFmt(b.qty)}</td><td>${e(b.borrower)}</td></tr>`).join('') || '<tr><td colspan="4" class="c">ไม่มี</td></tr>';
+            const html = `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>สรุปสิ้นเดือน ${e(_meLabel(rp))}</title><style>
+                @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:'Sarabun','TH Sarabun New',Tahoma,sans-serif;color:#111;font-size:13px;line-height:1.45}
+                h1{font-size:22px;margin:0}h2{font-size:15px;margin:18px 0 6px;border-bottom:2px solid #111;padding-bottom:2px}.sub{color:#555;margin:2px 0 12px}
+                table{width:100%;border-collapse:collapse;margin-bottom:4px}th,td{border:1px solid #999;padding:3px 7px;text-align:left;vertical-align:top}th{background:#eee}
+                .r{text-align:right;font-variant-numeric:tabular-nums}.c{text-align:center;color:#666}.kpi td:first-child{width:46%}
+                .sig{display:flex;gap:30px;margin-top:40px}.sig div{flex:1;text-align:center}.sig .ln{border-top:1px solid #111;margin-top:46px;padding-top:4px}
+                .note{font-size:11px;color:#666;margin-top:6px}tr{page-break-inside:avoid}</style></head><body>
+                <h1>สรุปคลังสินค้าประจำเดือน ${e(_meLabel(rp))}</h1><div class="sub">คลังอะไหล่เมาท์เทน · จัดทำ ${new Date().toLocaleDateString('th-TH', { dateStyle: 'long' })}</div>
+                <h2>ภาพรวม</h2><table class="kpi"><tr><th>รายการ</th><th class="r">เดือนนี้</th><th class="r">เดือนก่อน</th><th class="r">เปลี่ยนแปลง</th></tr>
+                <tr><td>รับเข้า (ชิ้น)</td><td class="r">${_meFmt(t.in_q)}</td><td class="r">${hasPrev ? _meFmt(pv.in_q) : '-'}</td><td class="r">${hasPrev ? _meDelta(t.in_q, pv.in_q) : '-'}</td></tr>
+                <tr><td>เบิกออก (ชิ้น)</td><td class="r">${_meFmt(t.out_q)}</td><td class="r">${hasPrev ? _meFmt(pv.out_q) : '-'}</td><td class="r">${hasPrev ? _meDelta(t.out_q, pv.out_q) : '-'}</td></tr>
+                <tr><td>จำนวนรายการที่รับเข้า / เบิกออก</td><td class="r">${_meFmt(t.in_items)} / ${_meFmt(t.out_items)}</td><td class="r">${hasPrev ? _meFmt(pv.in_n) + ' / ' + _meFmt(pv.out_n) : '-'}</td><td></td></tr>
+                <tr><td>มูลค่ารับเข้า (บาท)</td><td class="r">${_meFmt(t.in_v, 2)}</td><td></td><td></td></tr>
+                <tr><td>มูลค่าเบิกออก (บาท)</td><td class="r">${_meFmt(t.out_v, 2)}</td><td></td><td></td></tr>
+                <tr><td>มูลค่าคลังต้นเดือน (บาท)</td><td class="r">${_meFmt(t.open_v, 2)}</td><td></td><td></td></tr>
+                <tr><td><b>มูลค่าคลังสิ้นเดือน (บาท)</b></td><td class="r"><b>${_meFmt(t.close_v, 2)}</b></td><td></td><td></td></tr></table>
+                <div class="note">มูลค่าคำนวณจากราคาทุนปัจจุบันของแต่ละรายการ · ยอดต้น/สิ้นเดือนย้อนคำนวณจากประวัติ${hasPrev ? '' : ' · ไม่มีข้อมูลเดือนก่อนให้เทียบ'}</div>
+                <h2>สรุปแยกตามหมวดหมู่</h2><table><tr><th>หมวดหมู่</th><th class="r">รับเข้า (ชิ้น)</th><th class="r">เบิกออก (ชิ้น)</th><th class="r">มูลค่ารับเข้า</th><th class="r">มูลค่าเบิกออก</th></tr>${rowsCat}</table>
+                <h2>รายการที่เบิกออกสูงสุด 15 อันดับ</h2><table><tr><th>#</th><th>รหัส</th><th>ชื่อรายการ</th><th class="r">จำนวนเบิก</th><th class="r">มูลค่า (บาท)</th></tr>${rowsTop}</table>
+                <h2>ผู้เบิกสูงสุด</h2><table><tr><th>ชื่อ</th><th class="r">จำนวนครั้ง</th><th class="r">จำนวนชิ้น</th></tr>${rowsUsr}</table>
+                <h2>อะไหล่ต่ำกว่าเกณฑ์ (ณ ปัจจุบัน)</h2><table><tr><th>รหัส</th><th>ชื่อรายการ</th><th class="r">คงเหลือ</th><th class="r">ขั้นต่ำ</th></tr>${rowsLow}</table>
+                <h2>ค้างยืม (ณ ปัจจุบัน)</h2><table><tr><th>รหัส</th><th>รายการ</th><th class="r">จำนวน</th><th>ผู้ยืม</th></tr>${rowsBor}</table>
+                <div class="sig"><div><div class="ln">ผู้จัดทำ</div></div><div><div class="ln">ผู้ตรวจสอบ</div></div><div><div class="ln">ผู้อนุมัติ</div></div></div>
+                </body></html>`;
+            const old = document.getElementById('meFrame'); if (old) old.remove();
+            const fr = document.createElement('iframe'); fr.id = 'meFrame'; fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+            document.body.appendChild(fr); fr.contentDocument.open(); fr.contentDocument.write(html); fr.contentDocument.close();
+            writeAudit('EXPORT', 'พิมพ์สรุปสิ้นเดือน ' + _meLabel(rp) + ' (PDF)');
+            setTimeout(function () { fr.contentWindow.focus(); fr.contentWindow.print(); }, 500);
+            Swal.fire({ icon: 'info', title: 'เปิดหน้าต่างพิมพ์แล้ว', text: 'เลือกเครื่องพิมพ์เป็น "Save as PDF" (บันทึกเป็น PDF) เพื่อได้ไฟล์ PDF', timer: 4000, showConfirmButton: false });
         }
 
         function exportMonthlySummary() {
