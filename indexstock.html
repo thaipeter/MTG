@@ -2549,6 +2549,17 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             <p class="db2-sub"><i class="far fa-calendar-alt me-1"></i><span id="db2Today">-</span> · ภาพรวมระบบคลังสินค้าประจำวัน</p>
                         </div>
                     </div>
+                    <!-- เตือนสำรองข้อมูลสิ้นเดือน (เฉพาะแอดมิน) -->
+                    <div id="backupReminder" class="d-none align-items-center gap-3 flex-wrap mb-3 p-3" style="border:1px solid rgba(251,191,36,.5);background:rgba(251,191,36,.08);border-radius:14px">
+                        <i class="fas fa-shield-halved" style="color:#fbbf24;font-size:1.4rem"></i>
+                        <div class="flex-grow-1" style="min-width:220px">
+                            <div class="fw-bold" style="color:#fff" id="backupReminderTitle">ใกล้สิ้นเดือนแล้ว — ดาวน์โหลดไฟล์สำรองเก็บไว้ที่เครื่อง</div>
+                            <div class="small" style="color:#94a3b8">ระบบสำรองในฐานข้อมูลทุกวันอยู่แล้ว แต่ควรมีสำเนาไว้นอกระบบเดือนละครั้ง กันกรณีบัญชี/โปรเจกต์มีปัญหา</div>
+                        </div>
+                        <button class="btn btn-warning btn-sm fw-bold" onclick="downloadBackup()"><i class="fas fa-download me-1"></i> ดาวน์โหลดสำรอง</button>
+                        <button class="btn btn-outline-light btn-sm" onclick="openMonthEndReport()">สรุปสิ้นเดือน</button>
+                        <button class="btn btn-link btn-sm text-secondary" onclick="snoozeBackupReminder()">เตือนพรุ่งนี้</button>
+                    </div>
                     <!-- ต้องจัดการวันนี้ -->
                     <div class="dash-act" id="dashActionStrip" aria-label="ต้องจัดการวันนี้">
                         <div class="dash-act-lead"><b>ต้องจัดการ</b><span>กดเพื่อไปทำต่อ</span></div>
@@ -7803,6 +7814,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
         }
 
         function onDataLoaded(data, isSilentRefresh) {
+            try { if (typeof refreshBackupReminder === 'function') refreshBackupReminder(); } catch (e) {}
             // ถ้าเป็นการรีเฟรชแบบเงียบ (auto-refresh) และข้อมูลเหมือนเดิมทุกประการ ให้ข้ามการวาดหน้าใหม่ทั้งหมด
             // เพื่อไม่ให้ช่องค้นหา/ตำแหน่งสกอลล์/สถานะ UI ต่างๆ ถูกรีเซ็ตทั้งที่ไม่มีข้อมูลใหม่จริง
             if (isSilentRefresh) {
@@ -8793,6 +8805,31 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
         }
 
         // ===== สรุปสิ้นเดือน: เลือกเดือนได้ → Excel (หลายชีต) / พิมพ์-PDF =====
+        // ===== เตือนสำรองข้อมูลนอกระบบ: เริ่มเตือนตั้งแต่ 3 วันก่อนสิ้นเดือน จนกว่าจะดาวน์โหลดของเดือนนี้ =====
+        function _bkMonthKey() { const n = new Date(Date.now() + 7 * 3600 * 1000); return n.getUTCFullYear() + '-' + String(n.getUTCMonth() + 1).padStart(2, '0'); }
+        function refreshBackupReminder() {
+            const el = document.getElementById('backupReminder'); if (!el) return;
+            let show = false;
+            try {
+                if (window.currentUserProfile && currentUserProfile.role === 'admin') {
+                    const n = new Date(Date.now() + 7 * 3600 * 1000);
+                    const last = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth() + 1, 0)).getUTCDate();
+                    const daysLeft = last - n.getUTCDate();
+                    const done = localStorage.getItem('backupDownloadedMonth') === _bkMonthKey();
+                    const snooze = localStorage.getItem('backupSnoozeDate') === n.toISOString().slice(0, 10);
+                    show = daysLeft <= 3 && !done && !snooze;
+                    const t = document.getElementById('backupReminderTitle');
+                    if (t) t.textContent = daysLeft === 0 ? 'วันนี้วันสุดท้ายของเดือน — ดาวน์โหลดไฟล์สำรองเก็บไว้ที่เครื่อง' : 'ใกล้สิ้นเดือนแล้ว (อีก ' + daysLeft + ' วัน) — ดาวน์โหลดไฟล์สำรองเก็บไว้ที่เครื่อง';
+                }
+            } catch (e) {}
+            el.classList.toggle('d-none', !show); el.classList.toggle('d-flex', show);
+        }
+        function snoozeBackupReminder() {
+            try { localStorage.setItem('backupSnoozeDate', new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10)); } catch (e) {}
+            refreshBackupReminder();
+        }
+        document.addEventListener('DOMContentLoaded', function () { setTimeout(refreshBackupReminder, 1500); setInterval(refreshBackupReminder, 600000); });
+
         function openMonthEndReport() {
             if (!currentUserProfile || currentUserProfile.role !== 'admin') { Swal.fire({ icon: 'info', title: 'เฉพาะผู้ดูแลระบบ' }); return; }
             const now = new Date(Date.now() + 7 * 3600 * 1000);
@@ -12258,6 +12295,8 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                 setProgress('กำลังสร้างไฟล์ Excel...');
                 await new Promise(r => setTimeout(r, 50)); // ให้ UI อัปเดตข้อความก่อนเริ่มงานหนัก
                 XLSX.writeFile(wb, `Mountain_Inventory_Backup_${new Date().toISOString().split('T')[0]}.xlsx`);
+                try { localStorage.setItem('backupDownloadedMonth', _bkMonthKey()); } catch (e) {}
+                if (typeof refreshBackupReminder === 'function') refreshBackupReminder();
 
                 loadingEl.style.display = 'none';
                 setProgress('กำลังโหลดระบบ...');
