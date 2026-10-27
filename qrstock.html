@@ -1857,7 +1857,7 @@ function renderUserDropdown(query) {
     const rc = ROLE_CONFIG[u.role] || ROLE_CONFIG.user;
     // role qr: ถ้ามีตำแหน่ง (dept) ที่กรอกไว้ตอนสมัคร ให้โชว์ตำแหน่งแทนป้าย "QR" (permission/role ข้างในยังเป็น qr เหมือนเดิม)
     const badgeLabel = (u.role === 'qr' && u.dept) ? u.dept : rc.badgeText;
-    return `<div class="user-dropdown-item" onclick="selectUser('${u.userId}','${u.name.replace(/'/g,"\\'")}','${u.role}')"
+    return `<div class="user-dropdown-item" onclick="selectUser('${u.userId}','${jsq(u.name)}','${u.role}')"
       style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s"
       onmouseenter="this.style.background='var(--surface)'" onmouseleave="this.style.background=''">
       <span style="font-size:18px">${rc.icon}</span>
@@ -2606,7 +2606,7 @@ function renderCats(mode) {
       </div>
     </div>` +
     cats.map(c => `
-    <div class="cat-card" onclick="selectCat('${mode}','${esc(c)}')">
+    <div class="cat-card" onclick="selectCat('${mode}','${jsq(c)}')">
       ${catIconHtml(c, false)}
       <div class="cat-name">${esc(c)}</div>
       <div class="cat-count">${catMap[c].availCount}/${catMap[c].count} รายการ${catMap[c].hasStock ? '' : ' · <span style="color:var(--red)">หมด</span>'}</div>
@@ -3063,7 +3063,7 @@ function renderReturnList() {
         <div class="return-meta">${b.qty} ${getUnit(b.itemCode)} • ${esc(b.borrower)}</div>
         ${b.date ? `<div class="return-meta" style="color:var(--text3)">${b.date}</div>` : ''}
       </div>
-      <button class="return-btn" onclick="doReturn('${b.reqId}','${esc(b.itemName)}',${b.qty})">คืน</button>
+      <button class="return-btn" onclick="doReturn('${jsq(b.reqId)}','${jsq(b.itemName)}',${b.qty})">คืน</button>
     </div>`).join('');
 }
 
@@ -3270,7 +3270,7 @@ function renderReceiveCart() {
     const uploadedBadge = item._newImg ? `<span style="font-size:9px;color:var(--green);font-weight:700"><i class="fas fa-check-circle"></i> มีรูป</span>` : '';
     return `
     <div class="receive-item-row" id="rcRow_${i}">
-      <div style="cursor:pointer;flex-shrink:0" onclick="item.imageUrl&&showItemGallery('${item.code}','${esc(item.name)}')">${iconHtml}</div>
+      <div style="cursor:pointer;flex-shrink:0" onclick="item.imageUrl&&showItemGallery('${jsq(item.code)}','${jsq(item.name)}')">${iconHtml}</div>
       <div class="item-info" style="flex:1;min-width:0">
         <div class="item-name">${esc(item.name)}</div>
         <div class="item-code">${item.code}</div>
@@ -4821,7 +4821,7 @@ function renderMineApproval() {
       : `<span style="font-size:.7rem;font-weight:700;padding:4px 10px;border-radius:20px;background:#fbbf2422;color:#fbbf24;border:1px solid #fbbf2455">รออนุมัติ</span>`;
     const actionBtn = isRejected
       ? '' // ปฏิเสธไปแล้ว ไม่มีอะไรให้ยกเลิกอีก
-      : `<button onclick="cancelMyPendingRequest('${it.reqId}')" style="font-size:.68rem;font-weight:600;padding:3px 9px;border-radius:14px;background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.35);cursor:pointer">ยกเลิก</button>`;
+      : `<button onclick="cancelMyPendingRequest('${jsq(it.reqId)}')" style="font-size:.68rem;font-weight:600;padding:3px 9px;border-radius:14px;background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.35);cursor:pointer">ยกเลิก</button>`;
     const rejectedInfo = isRejected && (it.rejectedBy || it.rejectedAt)
       ? `<div style="font-size:.68rem;color:#f87171;margin-top:3px">✗ ปฏิเสธโดย ${esc(it.rejectedBy || 'แอดมิน')}${it.rejectedAt ? ' • ' + esc(it.rejectedAt) : ''}</div>`
       : '';
@@ -4936,7 +4936,7 @@ function renderMineRetro() {
         <div style="font-size:.75rem;color:rgba(255,255,255,.5);margin:4px 0">จำนวน ${qty} — มอบหมายเมื่อ ${esc(it.assignedAt)}</div>
         ${it.assignedRemark ? `<div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-bottom:8px">หมายเหตุจากแอดมิน: ${esc(it.assignedRemark)}</div>` : ''}
         <input type="text" id="retroReason_${esc(it.itemCode)}" placeholder="ระบุเหตุผลที่ขาด เช่น ซ่อม Line 2 เมื่อ 5/7" style="width:100%;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:.82rem;margin-bottom:8px;box-sizing:border-box">
-        <button onclick="submitMyRetroWithdraw('${esc(it.sessionId)}','${esc(it.itemCode)}',${qty})" style="width:100%;padding:9px;border:none;border-radius:8px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1a1200;font-weight:700;font-size:.82rem"><i class="fas fa-check"></i> ยืนยันเหตุผล</button>
+        <button onclick="submitMyRetroWithdraw('${jsq(it.sessionId)}','${jsq(it.itemCode)}',${qty})" style="width:100%;padding:9px;border:none;border-radius:8px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#1a1200;font-weight:700;font-size:.82rem"><i class="fas fa-check"></i> ยืนยันเหตุผล</button>
       </div>`;
     }).join('');
   }
@@ -5179,7 +5179,7 @@ function renderMineHistory() {
     const _hImgUrl = getProxyImgUrl(h.imageUrl);
     const _hImgFull = getFullImgUrl(h.imageUrl) || _hImgUrl;
     const imgHtml = _hImgUrl
-      ? `<img src="${_hImgUrl}" style="width:64px;height:64px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid rgba(255,255,255,.1);cursor:zoom-in" onclick="event.stopPropagation();viewImg('${_hImgFull}','${esc(h.itemName)}')" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+      ? `<img src="${_hImgUrl}" style="width:64px;height:64px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid rgba(255,255,255,.1);cursor:zoom-in" onclick="event.stopPropagation();viewImg('${jsq(_hImgFull)}','${jsq(h.itemName)}')" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
         + `<div style="display:none;width:64px;height:64px;border-radius:10px;background:rgba(255,255,255,.06);align-items:center;justify-content:center;flex-shrink:0;font-size:20px">${h.type==='เบิก'?'📦':h.type==='รับเข้า'?'📥':h.type==='คืน'?'↩️':h.type==='แจ้งชำรุด'?'⚠️':'🔧'}</div>`
       : `<div style="width:64px;height:64px;border-radius:10px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px">${h.type==='เบิก'?'📦':h.type==='รับเข้า'?'📥':h.type==='คืน'?'↩️':h.type==='แจ้งชำรุด'?'⚠️':'🔧'}</div>`;
       
@@ -5194,13 +5194,13 @@ function renderMineHistory() {
         <span style="flex-shrink:0;font-size:.7rem;font-weight:700;padding:4px 10px;border-radius:20px;background:${color}22;color:${color};border:1px solid ${color}55">รับเข้า</span>
       </div>`;
     }
-    const escName = esc(h.itemName).replace(/'/g, "\\'");
-    const escCode = esc(h.itemCode).replace(/'/g, "\\'");
-    const escQty = esc(h.qty).replace(/'/g, "\\'");
-    const escUnit = esc(h.unit || 'ชิ้น').replace(/'/g, "\\'");
-    const escRemark = esc(h.remark || '').replace(/'/g, "\\'");
-    const escSig = esc(h.signatureUrl || '').replace(/'/g, "\\'");
-    const escImg = esc(h.imageUrl || '').replace(/'/g, "\\'");
+    const escName = jsq(h.itemName);
+    const escCode = jsq(h.itemCode);
+    const escQty = jsq(h.qty);
+    const escUnit = jsq(h.unit || 'ชิ้น');
+    const escRemark = jsq(h.remark || '');
+    const escSig = jsq(h.signatureUrl || '');
+    const escImg = jsq(h.imageUrl || '');
     
     const isWithdraw = (h.type === 'เบิก');
     // ★ ปรับปรุง: ใช้ h.canReturn ที่คำนวณฝั่ง server แล้ว (เช็คทั้งยอดคงเหลือ + เกิน 7 วันหรือยัง)
@@ -5440,6 +5440,7 @@ function showToast(msg, type) {
 function getUnit(code) { const i = getAllItems().find(x => x.code === code); return i ? i.unit : ''; }
 function setRemark(id, v) { document.getElementById(id).value = v; }
 function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function jsq(s){ return esc(String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")); }
 function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
 // แปลง Google Drive URL ให้โหลดได้จากทุก origin

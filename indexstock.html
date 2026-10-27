@@ -6977,7 +6977,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
 
             items.forEach(item => {
                 const chip = document.createElement('span');
-                const safeItem = item.replace(/'/g, "\\'");
+                const safeItem = _jsAttr(item);
 
                 if (type === 'category') {
                     let catName = item;
@@ -7365,7 +7365,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     </div>
                     <div class="card-footer">
                         <span class="quota-hint">*การทดสอบหักโควตา 1 ข้อความ</span>
-                        <button class="btn-test ${canTest ? '' : 'btn-disabled'}" ${canTest ? `onclick="testLineBotSend(${b.id}, '${escapeHtml(b.label)}')"` : 'disabled title="ยังไม่ได้ตั้งค่าบอทนี้"'}>
+                        <button class="btn-test ${canTest ? '' : 'btn-disabled'}" ${canTest ? `onclick="testLineBotSend(${b.id}, '${_jsAttr(b.label)}')"` : 'disabled title="ยังไม่ได้ตั้งค่าบอทนี้"'}>
                             <span class="btn-icon">🧪</span> ทดสอบส่งข้อความหา Admin
                         </button>
                     </div>
@@ -8686,11 +8686,11 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             let slipOnclick = '';
             let slipBtn = '<span class="text-muted small">-</span>';
             if (actLower.includes('เบิก') || actLower.includes('ยืม')) {
-                let safeCode = String(log.code || '').replace(/'/g, "\\'");
-                let safeTime = String(log.time || '').replace(/'/g, "\\'");
-                let safeUser = String(displayUser || '').replace(/'/g, "\\'");
-                let safeAmount = String(log.amount || '').replace(/'/g, "\\'");
-                let safeAction = String(log.action || '').replace(/'/g, "\\'");
+                let safeCode = _jsAttr(log.code || '');
+                let safeTime = _jsAttr(log.time || '');
+                let safeUser = _jsAttr(displayUser || '');
+                let safeAmount = _jsAttr(log.amount || '');
+                let safeAction = _jsAttr(log.action || '');
                 slipOnclick = `viewSlipReceipt('${safeCode}', '${safeTime}', '${safeUser}', '${safeAmount}', '${safeAction}')`;
                 slipBtn = `<button class="btn btn-xs btn-outline-primary py-1 px-2 fw-bold" style="font-size:0.72rem; border-radius: 6px;" onclick="${slipOnclick}"><i class="fas fa-file-invoice me-1"></i>ดูใบเบิก</button>`;
             }
@@ -9088,7 +9088,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     else {
                         activePOs.forEach(p => {
                             let fileBtn = p.fileUrl ? `<a href="${p.fileUrl}" target="_blank" class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation()"><i class="fas fa-file-pdf"></i> PDF</a>` : '';
-                            let safePoCode = String(p.poCode || '').replace(/'/g, "\\'");
+                            let safePoCode = _jsAttr(p.poCode || '');
                             const isCancelled = String(p.status || '').includes('ยกเลิก');
                             let actionBtns = '';
                             if (currentUserProfile.role === 'admin') {
@@ -9253,11 +9253,11 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     let slipBtnHtml = '<span class="text-muted small">-</span>';
                     let slipOnclick = '';
                     if (actLower.includes('เบิก') || actLower.includes('ยืม')) {
-                        let safeCode = String(log.code || '').replace(/'/g, "\\'");
-                        let safeTime = String(log.time || '').replace(/'/g, "\\'");
-                        let safeUser = String(displayUser || '').replace(/'/g, "\\'");
-                        let safeAmount = String(log.amount || '').replace(/'/g, "\\'");
-                        let safeAction = String(log.action || '').replace(/'/g, "\\'");
+                        let safeCode = _jsAttr(log.code || '');
+                        let safeTime = _jsAttr(log.time || '');
+                        let safeUser = _jsAttr(displayUser || '');
+                        let safeAmount = _jsAttr(log.amount || '');
+                        let safeAction = _jsAttr(log.action || '');
                         slipOnclick = `viewSlipReceipt('${safeCode}', '${safeTime}', '${safeUser}', '${safeAmount}', '${safeAction}')`;
                         slipBtnHtml = `<button class="btn btn-xs btn-outline-primary py-1 px-2 fw-bold" style="font-size:0.72rem; border-radius: 6px;" onclick="${slipOnclick}"><i class="fas fa-file-invoice me-1"></i>ดูใบเบิก</button>`;
                     }
@@ -9351,7 +9351,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     if (isCancelled2 || po.status === 'ของขาดชั่วคราว') { statusColor = '#ef4444'; statusBg = '#3a1e1e'; }
                     else if (po.status === 'กำลังผลิต') { statusColor = '#60a5fa'; statusBg = '#1e3a5f'; }
 
-                    let safePoCode = String(po.poCode).replace(/'/g, "\\'");
+                    let safePoCode = _jsAttr(po.poCode);
                     let actionBtns = '';
                     if (currentUserProfile.role === 'admin') {
                         if (isCancelled2) {
@@ -9561,11 +9561,11 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     const amountStr = (isOut ? '-' : '+') + String(log.amount == null ? '' : log.amount).replace(/^[+\-−]\s*/, '');
                     let slipOnclick = '';
                     if (actLower.includes('เบิก') || actLower.includes('ยืม')) {
-                        const safeCode = String(log.code || '').replace(/'/g, "\\'");
-                        const safeTime = String(log.time || '').replace(/'/g, "\\'");
-                        const safeUser = String(displayUser || '').replace(/'/g, "\\'");
-                        const safeAmount = String(log.amount || '').replace(/'/g, "\\'");
-                        const safeAction = String(log.action || '').replace(/'/g, "\\'");
+                        const safeCode = _jsAttr(log.code || '');
+                        const safeTime = _jsAttr(log.time || '');
+                        const safeUser = _jsAttr(displayUser || '');
+                        const safeAmount = _jsAttr(log.amount || '');
+                        const safeAction = _jsAttr(log.action || '');
                         slipOnclick = `viewSlipReceipt('${safeCode}', '${safeTime}', '${safeUser}', '${safeAmount}', '${safeAction}')`;
                     }
                     const card = document.createElement('div');
@@ -9653,7 +9653,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     let imageCell = '';
                     const _proxyImg = getProxyImgUrl(item.imageUrl);
                     if (_proxyImg) {
-                        const safeImg = String(item.imageUrl).replace(/"/g, '&quot;').replace(/'/g, "\\'");
+                        const safeImg = _jsAttr(item.imageUrl);
                         imageCell = '<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px">'
                             + '<img src="' + _proxyImg + '"'
                             + ' style="width:42px;height:42px;object-fit:cover;border-radius:8px;border:1px solid var(--border-color);cursor:pointer;transition:all .2s;box-shadow:0 2px 4px rgba(0,0,0,.3)"'
@@ -10248,7 +10248,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 if (!users || users.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">ไม่พบข้อมูล</td></tr>'; return; }
                 let pendingCount = 0;
                 users.forEach(u => {
-                    let tr = document.createElement('tr'); let badgeHtml = ''; let actionHtml = ''; let safeUid = String(u.userId || '').replace(/'/g, "\\'");
+                    let tr = document.createElement('tr'); let badgeHtml = ''; let actionHtml = ''; let safeUid = _jsAttr(u.userId || '');
                     if (u.role === 'admin') { badgeHtml = '<span class="badge bg-primary px-3 py-2 shadow-sm"><i class="fas fa-crown me-1"></i> Admin</span>'; actionHtml = `<button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="updateUserRole('${safeUid}', 'user')"><i class="fas fa-arrow-down"></i> ปรับเป็น User</button>`; } 
                     else if (u.role === 'user') { badgeHtml = '<span class="badge bg-success bg-opacity-10 text-success px-3 py-2"><i class="fas fa-user-check me-1"></i> User</span>'; actionHtml = `<div class="btn-group shadow-sm"><button class="btn btn-sm btn-light text-danger border" onclick="updateUserRole('${safeUid}', 'rejected')" title="ระงับสิทธิ์"><i class="fas fa-ban"></i></button><button class="btn btn-sm btn-light text-primary border" onclick="updateUserRole('${safeUid}', 'admin')" title="อัปเกรดเป็น Admin"><i class="fas fa-crown"></i></button></div>`; } 
                     else if (u.role === 'staff') { badgeHtml = '<span class="badge bg-info bg-opacity-10 text-info px-3 py-2"><i class="fas fa-user-tie me-1"></i> Staff</span>'; actionHtml = `<div class="btn-group shadow-sm"><button class="btn btn-sm btn-light text-danger border" onclick="updateUserRole('${safeUid}', 'rejected')" title="ระงับสิทธิ์"><i class="fas fa-ban"></i></button><button class="btn btn-sm btn-light text-primary border" onclick="updateUserRole('${safeUid}', 'user')" title="อัปเกรดเป็น User"><i class="fas fa-arrow-up"></i></button></div>`; }
@@ -12041,13 +12041,13 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             if (currentUserProfile.role === 'admin' && code) {
                 adminButtonsHtml = `
                     <div style="display: flex; gap: 8px; justify-content: center; margin-top: 15px; flex-wrap: wrap;">
-                        <button onclick="window.handleEditActiveImage('${code}', '${itemType}')" class="btn btn-sm btn-warning" style="padding: 6px 12px; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; color: #fff; border-radius: 8px;"><i class="fas fa-edit"></i> เปลี่ยนรูปนี้</button>
-                        <button onclick="window.handleDeleteActiveImage('${code}', '${itemType}')" class="btn btn-sm btn-danger" style="padding: 6px 12px; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; border-radius: 8px;"><i class="fas fa-trash-alt"></i> ลบรูปนี้</button>
+                        <button onclick="window.handleEditActiveImage('${_jsAttr(code)}', '${_jsAttr(itemType)}')" class="btn btn-sm btn-warning" style="padding: 6px 12px; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; color: #fff; border-radius: 8px;"><i class="fas fa-edit"></i> เปลี่ยนรูปนี้</button>
+                        <button onclick="window.handleDeleteActiveImage('${_jsAttr(code)}', '${_jsAttr(itemType)}')" class="btn btn-sm btn-danger" style="padding: 6px 12px; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; border-radius: 8px;"><i class="fas fa-trash-alt"></i> ลบรูปนี้</button>
                 `;
                 
                 if (imageUrls.length < 3) {
                     adminButtonsHtml += `
-                        <button onclick="window.handleAddImage('${code}', '${itemType}')" class="btn btn-sm btn-success" style="padding: 6px 12px; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; border-radius: 8px;"><i class="fas fa-plus"></i> เพิ่มรูปที่ ${imageUrls.length + 1}</button>
+                        <button onclick="window.handleAddImage('${_jsAttr(code)}', '${_jsAttr(itemType)}')" class="btn btn-sm btn-success" style="padding: 6px 12px; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; border-radius: 8px;"><i class="fas fa-plus"></i> เพิ่มรูปที่ ${imageUrls.length + 1}</button>
                     `;
                 }
                 
@@ -15641,8 +15641,8 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             if (!list.length) { listEl.innerHTML = ''; emptyEl.classList.remove('d-none'); return; }
             emptyEl.classList.add('d-none');
             listEl.innerHTML = list.map(function(r) {
-                const uid  = String(r.userId || '').replace(/'/g, "\\'");
-                const name = String(r.name   || '').replace(/'/g, "\\'");
+                const uid  = _jsAttr(r.userId || '');
+                const name = _jsAttr(r.name   || '');
                 return `
                 <div class="col-12 col-md-6 col-lg-4">
                     <div class="p-3 rounded-3 h-100 pending-card">
@@ -16772,7 +16772,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                         wrap.innerHTML = res.archives.map(function(a) {
                             const parts = a.name.replace('Archive_','').split('_');
                             const label = parts.length === 2 ? parts[0] + '/' + parts[1] : a.name;
-                            return '<div class="d-flex align-items-center justify-content-between px-3 py-2 mb-2 rounded-3" style="background:#232838;border:1px solid #2a2f3d">'                                + '<div>'                                + '<span class="fw-bold me-2" style="color:#e0e0e0"><i class="fas fa-file-archive me-2" style="color:#22c55e"></i>' + a.name + '</span>'                                + '<span class="badge" style="background:#1e3a2f;color:#22c55e;font-size:10px">' + a.rows + ' รายการ</span>'                                + '</div>'                                + '<div class="d-flex gap-2">'                                + '<button onclick="viewArchiveRows(\'' + a.name.replace(/'/g,"\\'") + '\')" class="btn btn-sm" style="background:#1e3a5f;color:#60a5fa;border:1px solid #2a3f5f;border-radius:8px;font-size:12px"><i class="fas fa-table me-1"></i>เปิด</button>'                                + '<button onclick="doRestoreArchive(\'' + a.name.replace(/'/g,"\\'") + '\')" class="btn btn-sm" style="background:#3a2a1e;color:#fbbf24;border:1px solid #5f4a2a;border-radius:8px;font-size:12px"><i class="fas fa-undo me-1"></i>กู้คืน</button>'                                + '</div>'                                + '</div>';
+                            return '<div class="d-flex align-items-center justify-content-between px-3 py-2 mb-2 rounded-3" style="background:#232838;border:1px solid #2a2f3d">'                                + '<div>'                                + '<span class="fw-bold me-2" style="color:#e0e0e0"><i class="fas fa-file-archive me-2" style="color:#22c55e"></i>' + a.name + '</span>'                                + '<span class="badge" style="background:#1e3a2f;color:#22c55e;font-size:10px">' + a.rows + ' รายการ</span>'                                + '</div>'                                + '<div class="d-flex gap-2">'                                + '<button onclick="viewArchiveRows(\'' + _jsAttr(a.name) + '\')" class="btn btn-sm" style="background:#1e3a5f;color:#60a5fa;border:1px solid #2a3f5f;border-radius:8px;font-size:12px"><i class="fas fa-table me-1"></i>เปิด</button>'                                + '<button onclick="doRestoreArchive(\'' + _jsAttr(a.name) + '\')" class="btn btn-sm" style="background:#3a2a1e;color:#fbbf24;border:1px solid #5f4a2a;border-radius:8px;font-size:12px"><i class="fas fa-undo me-1"></i>กู้คืน</button>'                                + '</div>'                                + '</div>';
                         }).join('');
                     })
                     .withFailureHandler(function(err) { const errMsg = (err && (err.message || err.toString())) || 'ไม่ทราบสาเหตุ'; wrap.innerHTML = '<div class="text-center py-3 text-danger small">โหลดไม่สำเร็จ: ' + errMsg + '</div>'; })
@@ -16890,7 +16890,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                         + '<div><span class="fw-bold me-2" style="color:#e0e0e0"><i class="fas fa-file-code me-2" style="color:#f87171"></i>' + f.name + '</span>'
                         + '<span class="badge me-1" style="background:#232838;color:#a0aec0;font-size:10px;border:1px solid #2a2f3d">' + dateLabel + '</span>'
                         + '<span class="badge" style="background:#232838;color:#a0aec0;font-size:10px;border:1px solid #2a2f3d">' + f.sizeKB + ' KB</span></div>'
-                        + '<button onclick="doRestoreFromBackup(\'' + f.id + '\',\'' + f.name.replace(/'/g,"\\'") + '\')" class="btn btn-sm" style="background:#3a1e1e;color:#f87171;border:1px solid #5f2a2a;border-radius:8px;font-size:12px"><i class="fas fa-cloud-download-alt me-1"></i>กู้คืน</button>'
+                        + '<button onclick="doRestoreFromBackup(\'' + f.id + '\',\'' + _jsAttr(f.name) + '\')" class="btn btn-sm" style="background:#3a1e1e;color:#f87171;border:1px solid #5f2a2a;border-radius:8px;font-size:12px"><i class="fas fa-cloud-download-alt me-1"></i>กู้คืน</button>'
                         + '</div>';
                 }).join('');
             }, function(err) {
