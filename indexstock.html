@@ -4227,6 +4227,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         </div>
                         <div id="stWkReview"></div>
                         <div id="stWkBody"></div>
+                        <div id="stWkAdmin" class="mt-3"></div>
                     </div>
 
                     <ul class="nav nav-tabs mb-3" style="border-bottom:1px solid #2a2f3d">
@@ -8808,7 +8809,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
 
         // ===== สรุปสิ้นเดือน: เลือกเดือนได้ → Excel (หลายชีต) / พิมพ์-PDF =====
         // ===== แจ้งเตือนระบบ (แอดมิน) =====
-        const EXPECTED_API_VERSION = 'v94';   // เลขเวอร์ชันของไฟล์ api ที่หน้าเว็บนี้ต้องการ (เปลี่ยนพร้อมกับไฟล์ api)
+        const EXPECTED_API_VERSION = 'v95';   // เลขเวอร์ชันของไฟล์ api ที่หน้าเว็บนี้ต้องการ (เปลี่ยนพร้อมกับไฟล์ api)
         window._apiVersionState = null;       // null=ยังไม่ตรวจ | {ok:true,version} | {ok:false,version|null}
         function _noticeHtml(color, icon, title, text, btn) {
             return `<div class="d-flex align-items-center gap-3 flex-wrap p-3 mb-2" style="border:1px solid ${color}88;background:${color}14;border-radius:14px"><i class="fas ${icon}" style="color:${color};font-size:1.3rem"></i><div class="flex-grow-1" style="min-width:220px"><div class="fw-bold" style="color:#fff">${title}</div><div class="small" style="color:#94a3b8">${text}</div></div>${btn || ''}</div>`;
@@ -16272,9 +16273,89 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                 '<div class="collapse" id="stWkNext"><div class="small my-2" style="color:#8d97a9">' + (n.existing ? 'ใบงานนี้ถูกสร้างแล้ว' : 'ใบงานจริงสร้างอัตโนมัติทุกวันจันทร์ 00:05 น. รายการอาจเปลี่ยนได้ตามการเบิกและการนับที่เกิดขึ้นก่อนถึงวันนั้น') + '</div><div class="table-responsive" style="max-height:320px;overflow:auto;border:1px solid #2a2f3d;border-radius:12px"><table class="table table-dark table-sm align-middle mb-0" style="--bs-table-bg:transparent"><thead style="position:sticky;top:0;background:#1b1f2a"><tr><th style="width:44px">#</th><th>รายการ</th><th>หมวด</th><th>เหตุผลที่ถูกเลือก</th></tr></thead><tbody>' + nrows + '</tbody></table></div></div></div>';
         }
 
+        // ===== จัดการรอบนับรายสัปดาห์ (แอดมิน): ตั้งค่า + ประวัติรอบ + ปิดรอบ =====
+        let _stCountAdmin = null;
+        function loadCountAdmin() {
+            const box = document.getElementById('stWkAdmin'); if (!box) return;
+            if (!currentUserProfile || currentUserProfile.role !== 'admin') { box.innerHTML = ''; return; }
+            callGAS('webCountWeeks', [_stWkAdminPayload({ userId: currentUserProfile.uid })], function (res) {
+                if (!res || res.success === false) { box.innerHTML = '<div class="small" style="color:#ff7a85">โหลดรอบนับไม่สำเร็จ: ' + escapeHtml(String((res && res.error) || 'เซิร์ฟเวอร์ยังไม่รองรับ (ต้อง Deploy api v95)')) + '</div>'; return; }
+                _stCountAdmin = res; renderCountAdmin();
+            }, function (e) { box.innerHTML = '<div class="small" style="color:#ff7a85">โหลดรอบนับไม่สำเร็จ (ต้อง Deploy api v95): ' + escapeHtml(String(e)) + '</div>'; });
+        }
+        function renderCountAdmin() {
+            const box = document.getElementById('stWkAdmin'); const d = _stCountAdmin; if (!box || !d) return;
+            const cfg = d.cfg || {}; const weeks = d.weeks || [];
+            const sw = (id, on, label, hint) => '<label class="d-flex align-items-start gap-2 mb-2" style="cursor:pointer"><input type="checkbox" id="' + id + '" ' + (on ? 'checked' : '') + ' class="form-check-input mt-1"><span><span style="color:#e6eaf2">' + label + '</span><br><small style="color:#8d97a9">' + hint + '</small></span></label>';
+            const overdue = weeks.filter(w => w.status === 'open' && w.ended);
+            const rows = weeks.map(w => {
+                const open = w.status === 'open';
+                const badge = open ? '<span class="badge" style="background:#1e3a2f;color:#22c55e">เปิดอยู่</span>' : '<span class="badge bg-secondary">ปิดแล้ว</span>';
+                const act = open ? '<button class="btn btn-sm" style="background:#3a2a10;color:#f59e0b;border:1px solid #5f4a1a;border-radius:8px" onclick="closeCountWeek(\'' + _jsAttr(w.weekId) + '\')">ปิดรอบ</button>' : '<span class="small" style="color:#6b7280">' + escapeHtml(w.closedBy || '') + (w.closedAt ? ' · ' + escapeHtml(w.closedAt.substring(0, 10)) : '') + '</span>';
+                const pct = w.total ? Math.round(w.counted * 100 / w.total) : 0;
+                return '<tr><td>' + escapeHtml(_stWkFmtRange(w.weekStart, w.weekEnd)) + '</td><td>' + badge + '</td><td>' + w.counted + '/' + w.total + ' <small style="color:#8d97a9">(' + pct + '%)</small></td><td>' + (w.diffs ? '<span style="color:#ff7a85">' + w.diffs + '</span>' : '0') + '</td><td>' + (w.review ? '<span class="badge" style="background:#3a1e1e;color:#ff7a85">' + w.review + '</span>' : '0') + '</td><td class="text-end">' + act + '</td></tr>';
+            }).join('') || '<tr><td colspan="6" class="text-center py-3" style="color:#8d97a9">ยังไม่มีรอบนับ</td></tr>';
+            box.innerHTML =
+                '<div class="p-3" style="background:#12151d;border:1px solid #2a2f3d;border-radius:12px">' +
+                '<div class="fw-bold mb-2" style="color:#fff"><i class="fas fa-sliders-h me-2" style="color:#e8a020"></i>ตั้งค่าใบงานนับสต็อก</div>' +
+                '<div class="row g-3 align-items-start"><div class="col-12 col-md-4"><label class="small mb-1" style="color:#8d97a9">จำนวนรายการต่อสัปดาห์ (5–300)</label><input type="number" id="stCfgLimit" min="5" max="300" class="form-control form-control-sm" style="background:transparent;color:#fff;border:1px solid #2a2f3d" value="' + (cfg.limit || 50) + '"><div class="small mt-1" style="color:#8d97a9">มีผลกับใบงานที่ระบบสร้างใหม่ทุกคืนวันอาทิตย์ (สัปดาห์ที่สร้างไปแล้วไม่เปลี่ยน)</div></div>' +
+                '<div class="col-12 col-md-8">' + sw('stCfgHide', cfg.hideSystem !== false, 'ซ่อนยอดในระบบตอนนับ', 'ผู้นับไม่เห็นยอดคงเหลือ ป้องกันการนับตามตัวเลข') + sw('stCfgRecheck', cfg.recheck !== false, 'ให้นับซ้ำเมื่อยอดไม่ตรง', 'ถ้านับครั้งแรกไม่ตรง ระบบให้นับอีกรอบก่อนส่งเข้าคิวตรวจ') + '</div></div>' +
+                '<div class="mt-2"><button class="btn btn-sm fw-bold" style="background:#e8a020;color:#1b1200;border-radius:8px" onclick="saveCountCfg()"><i class="fas fa-save me-1"></i> บันทึกการตั้งค่า</button></div></div>' +
+                '<div class="p-3 mt-3" style="background:#12151d;border:1px solid #2a2f3d;border-radius:12px">' +
+                '<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2"><div class="fw-bold" style="color:#fff"><i class="fas fa-calendar-check me-2" style="color:#e8a020"></i>รอบนับย้อนหลัง (12 รอบล่าสุด)</div>' +
+                (overdue.length ? '<button class="btn btn-sm" style="background:#3a2a10;color:#f59e0b;border:1px solid #5f4a1a;border-radius:8px" onclick="closeAllPastCountWeeks()">ปิดรอบที่ผ่านมาแล้วทั้งหมด (' + overdue.length + ')</button>' : '') + '</div>' +
+                '<div class="table-responsive"><table class="table table-dark table-sm align-middle mb-0" style="--bs-table-bg:transparent"><thead><tr style="color:#8d97a9"><th>สัปดาห์</th><th>สถานะ</th><th>นับแล้ว</th><th>ส่วนต่าง</th><th>รอตรวจ</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+                '<div class="small mt-2" style="color:#8d97a9">ปิดรอบ = ปิดใบงานของสัปดาห์นั้น ไม่รับยอดนับเพิ่ม · รายการที่ยังไม่นับจะถูกยกไปจัดในสัปดาห์ถัดไปอัตโนมัติ · ข้อมูลที่นับแล้วและคิวตรวจส่วนต่างไม่หาย</div></div>';
+        }
+        function saveCountCfg() {
+            const lim = parseInt(document.getElementById('stCfgLimit').value, 10);
+            if (!(lim >= 5 && lim <= 300)) { Swal.fire({ icon: 'warning', title: 'จำนวนรายการต้องอยู่ระหว่าง 5–300' }); return; }
+            const payload = { userId: currentUserProfile.uid, userName: currentUserProfile.name, countItemLimit: lim,
+                countHideSystem: document.getElementById('stCfgHide').checked, countRecheck: document.getElementById('stCfgRecheck').checked };
+            document.getElementById('loading').style.display = 'flex';
+            callGAS('webSaveSettings', [payload], function (r) {
+                document.getElementById('loading').style.display = 'none';
+                if (!r || r.success === false) { Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', text: String((r && r.error) || '') }); return; }
+                try { if (allData && allData.settings) { allData.settings.countItemLimit = lim; allData.settings.countHideSystem = payload.countHideSystem; allData.settings.countRecheck = payload.countRecheck; } } catch (e) {}
+                Swal.fire({ icon: 'success', title: 'บันทึกการตั้งค่าแล้ว', timer: 1500, showConfirmButton: false });
+                loadCountAdmin();
+            }, function (e) { document.getElementById('loading').style.display = 'none'; Swal.fire({ icon: 'error', title: 'บันทึกไม่สำเร็จ', text: String(e) }); });
+        }
+        function _closeCountWeekReq(weekId, done) {
+            callGAS('webCountCloseWeek', [_stWkAdminPayload({ weekId: weekId, userId: currentUserProfile.uid })], function (r) { done(!r || r.success === false ? String((r && r.error) || 'ไม่สำเร็จ') : null); }, function (e) { done(String(e)); });
+        }
+        function closeCountWeek(weekId) {
+            const w = ((_stCountAdmin && _stCountAdmin.weeks) || []).find(x => x.weekId === weekId); if (!w) return;
+            const notEnded = !w.ended;
+            Swal.fire({ icon: 'question', title: 'ปิดรอบนับ ' + _stWkFmtRange(w.weekStart, w.weekEnd) + '?',
+                html: (notEnded ? '<div class="alert alert-warning small text-start">นี่คือสัปดาห์ปัจจุบัน ถ้าปิดตอนนี้ ผู้นับจะส่งยอดเพิ่มไม่ได้อีก</div>' : '') + '<div class="small text-start">นับแล้ว ' + w.counted + '/' + w.total + ' รายการ · ที่ยังไม่นับจะถูกยกไปสัปดาห์ถัดไป</div>',
+                showCancelButton: true, confirmButtonText: 'ปิดรอบ', cancelButtonText: 'ยกเลิก' }).then(function (res) {
+                if (!res.isConfirmed) return;
+                document.getElementById('loading').style.display = 'flex';
+                _closeCountWeekReq(weekId, function (err) {
+                    document.getElementById('loading').style.display = 'none';
+                    if (err) { Swal.fire({ icon: 'error', title: 'ปิดรอบไม่สำเร็จ', text: err }); return; }
+                    loadCountAdmin(); try { loadStockWeekCard(); } catch (e) {}
+                });
+            });
+        }
+        function closeAllPastCountWeeks() {
+            const list = ((_stCountAdmin && _stCountAdmin.weeks) || []).filter(w => w.status === 'open' && w.ended); if (!list.length) return;
+            Swal.fire({ icon: 'question', title: 'ปิด ' + list.length + ' รอบที่ผ่านมาแล้ว?', text: 'ปิดเฉพาะสัปดาห์ที่จบไปแล้ว ไม่แตะสัปดาห์ปัจจุบัน ข้อมูลที่นับแล้วไม่หาย', showCancelButton: true, confirmButtonText: 'ปิดทั้งหมด', cancelButtonText: 'ยกเลิก' }).then(function (res) {
+                if (!res.isConfirmed) return;
+                document.getElementById('loading').style.display = 'flex';
+                let i = 0, fail = 0;
+                (function next() {
+                    if (i >= list.length) { document.getElementById('loading').style.display = 'none'; loadCountAdmin(); Swal.fire({ icon: fail ? 'warning' : 'success', title: fail ? 'ปิดไม่ครบ ' + fail + ' รอบ' : 'ปิดรอบแล้ว', timer: 1800, showConfirmButton: false }); return; }
+                    _closeCountWeekReq(list[i++].weekId, function (err) { if (err) fail++; next(); });
+                })();
+            });
+        }
+
         function loadStockTakeMgmt() {
             try { loadStockWeekCard(); } catch (e) { console.warn('loadStockWeekCard', e); }
             try { loadCountReview(); } catch (e) { console.warn('loadCountReview', e); }
+            try { loadCountAdmin(); } catch (e) { console.warn('loadCountAdmin', e); }
             const tbody = document.getElementById('stMgmtTableBody');
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4" style="color:#6b7280"><i class="fas fa-spinner fa-spin me-2"></i>กำลังโหลด...</td></tr>';
