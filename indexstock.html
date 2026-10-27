@@ -2549,6 +2549,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             <p class="db2-sub"><i class="far fa-calendar-alt me-1"></i><span id="db2Today">-</span> · ภาพรวมระบบคลังสินค้าประจำวัน</p>
                         </div>
                     </div>
+                    <!-- แจ้งเตือนระบบ (แอดมิน): เวอร์ชันหลังบ้าน / เดือนที่ยังไม่ได้ปิด -->
+                    <div id="sysNotices" class="mb-3"></div>
                     <!-- เตือนสำรองข้อมูลสิ้นเดือน (เฉพาะแอดมิน) -->
                     <div id="backupReminder" class="d-none align-items-center gap-3 flex-wrap mb-3 p-3" style="border:1px solid rgba(251,191,36,.5);background:rgba(251,191,36,.08);border-radius:14px">
                         <i class="fas fa-shield-halved" style="color:#fbbf24;font-size:1.4rem"></i>
@@ -7814,7 +7816,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
         }
 
         function onDataLoaded(data, isSilentRefresh) {
-            try { if (typeof refreshBackupReminder === 'function') refreshBackupReminder(); } catch (e) {}
+            try { if (typeof refreshBackupReminder === 'function') refreshBackupReminder(); if (typeof refreshSysNotices === 'function') { refreshSysNotices(); checkApiVersion(); } } catch (e) {}
             // ถ้าเป็นการรีเฟรชแบบเงียบ (auto-refresh) และข้อมูลเหมือนเดิมทุกประการ ให้ข้ามการวาดหน้าใหม่ทั้งหมด
             // เพื่อไม่ให้ช่องค้นหา/ตำแหน่งสกอลล์/สถานะ UI ต่างๆ ถูกรีเซ็ตทั้งที่ไม่มีข้อมูลใหม่จริง
             if (isSilentRefresh) {
@@ -8805,6 +8807,56 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
         }
 
         // ===== สรุปสิ้นเดือน: เลือกเดือนได้ → Excel (หลายชีต) / พิมพ์-PDF =====
+        // ===== แจ้งเตือนระบบ (แอดมิน) =====
+        const EXPECTED_API_VERSION = 'v94';   // เลขเวอร์ชันของไฟล์ api ที่หน้าเว็บนี้ต้องการ (เปลี่ยนพร้อมกับไฟล์ api)
+        window._apiVersionState = null;       // null=ยังไม่ตรวจ | {ok:true,version} | {ok:false,version|null}
+        function _noticeHtml(color, icon, title, text, btn) {
+            return `<div class="d-flex align-items-center gap-3 flex-wrap p-3 mb-2" style="border:1px solid ${color}88;background:${color}14;border-radius:14px"><i class="fas ${icon}" style="color:${color};font-size:1.3rem"></i><div class="flex-grow-1" style="min-width:220px"><div class="fw-bold" style="color:#fff">${title}</div><div class="small" style="color:#94a3b8">${text}</div></div>${btn || ''}</div>`;
+        }
+        function checkApiVersion() {
+            if (!currentUserProfile || currentUserProfile.role !== 'admin' || window._apiVersionState || window._apiVersionChecking) return;
+            window._apiVersionChecking = true;
+            try {
+                google.script.run
+                    .withSuccessHandler(function (r) {
+                        window._apiVersionChecking = false;
+                        const v = r && r.version ? String(r.version) : null;
+                        window._apiVersionState = { ok: v === EXPECTED_API_VERSION, version: v };
+                        refreshSysNotices();
+                    })
+                    .withFailureHandler(function () { window._apiVersionChecking = false; window._apiVersionState = { ok: false, version: null }; refreshSysNotices(); })
+                    .webGetApiVersion();
+            } catch (e) { window._apiVersionChecking = false; }
+        }
+        function _unclosedMonthLabel() {
+            const now = new Date(Date.now() + 7 * 3600 * 1000);
+            const curKey = now.getUTCFullYear() * 12 + now.getUTCMonth();
+            let oldest = null;
+            (allData.history || []).forEach(function (h) {
+                const d = parseThaiDate(h.time); if (!d) return;
+                const k = d.getFullYear() * 12 + d.getMonth();
+                if (k < curKey && (oldest === null || k < oldest)) oldest = k;
+            });
+            if (oldest === null) return null;
+            return _TH_MONTHS[oldest % 12] + ' ' + (Math.floor(oldest / 12) + 543);
+        }
+        function refreshSysNotices() {
+            const el = document.getElementById('sysNotices'); if (!el) return;
+            if (!currentUserProfile || currentUserProfile.role !== 'admin') { el.innerHTML = ''; return; }
+            let h = '';
+            const st = window._apiVersionState;
+            if (st && !st.ok) {
+                h += _noticeHtml('#f87171', 'fa-triangle-exclamation', 'ระบบหลังบ้านเป็นเวอร์ชันเก่า',
+                    'หน้าเว็บต้องการ ' + EXPECTED_API_VERSION + ' แต่หลังบ้านเป็น ' + (st.version || 'เวอร์ชันเก่ามาก (ไม่มีเลขเวอร์ชัน)') + ' — บางปุ่มจะใช้ไม่ได้ ให้ Deploy ไฟล์ api ล่าสุดที่ Supabase');
+            }
+            const um = _unclosedMonthLabel();
+            if (um) {
+                h += _noticeHtml('#fbbf24', 'fa-box-archive', 'มีประวัติเดือน ' + um + ' ที่ยังไม่ได้ปิดเดือน',
+                    'ประวัติเก่ายังค้างในตารางปัจจุบัน ควรปิดเดือนเพื่อย้ายไปเก็บถาวร (ข้อมูลไม่หาย ค้นดูได้เหมือนเดิม)',
+                    '<button class="btn btn-warning btn-sm fw-bold" onclick="goTo(\'archiveMgmt\')">ไปหน้าปิดเดือน</button>');
+            }
+            el.innerHTML = h;
+        }
         // ===== เตือนสำรองข้อมูลนอกระบบ: เริ่มเตือนตั้งแต่ 3 วันก่อนสิ้นเดือน จนกว่าจะดาวน์โหลดของเดือนนี้ =====
         function _bkMonthKey() { const n = new Date(Date.now() + 7 * 3600 * 1000); return n.getUTCFullYear() + '-' + String(n.getUTCMonth() + 1).padStart(2, '0'); }
         function refreshBackupReminder() {
