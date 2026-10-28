@@ -2410,6 +2410,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 <li><a onclick="goTo('tools')" title="รายการ เครื่องมือ (Tools)"><i class="fas fa-toolbox"></i> <span>รายการเครื่องมือ</span></a></li>
                 <li><a onclick="goTo('borrowedItems')" title="รายการ ยืม/คืน เครื่องมือ"><i class="fas fa-handshake"></i> <span>รายการยืม/คืน</span></a></li>
                 <li><a onclick="goTo('stockTakeMgmt')" title="ตรวจนับสต็อก"><i class="fas fa-clipboard-check"></i> <span>ตรวจนับสต็อก</span></a></li>
+                <li class="admin-only-element"><a onclick="goTo('takenMarks')" title="รายการที่หยิบไปก่อน ยังไม่ได้เบิก (เฉพาะแอดมิน)"><i class="fas fa-hand-holding"></i> <span>หยิบไปก่อน</span> <span id="markOpenBadge" class="badge bg-warning text-dark rounded-pill ms-auto d-none" style="font-size:.6rem;padding:2px 6px">0</span></a></li>
 
                 <li class="sidebar-group-title">เอกสาร & ตรวจสอบ</li>
                 <li><a onclick="goTo('monthlyOrders')" title="จัดการใบสั่งซื้อค้าง"><i class="fas fa-shopping-cart"></i> <span>ใบสั่งซื้อ (Orders)</span></a></li>
@@ -2443,6 +2444,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             <a onclick="goTo('tools'); toggleMobileNav(false)"><i class="fas fa-toolbox"></i> เครื่องมือ</a>
             <a onclick="goTo('borrowedItems'); toggleMobileNav(false)"><i class="fas fa-clipboard-check"></i> Borrow</a>
             <a onclick="goTo('stockTakeMgmt'); toggleMobileNav(false)"><i class="fas fa-clipboard-check"></i> นับสต็อก</a>
+            <a class="admin-only-element" onclick="goTo('takenMarks'); toggleMobileNav(false)"><i class="fas fa-hand-holding"></i> หยิบไปก่อน</a>
             <a onclick="goTo('archiveMgmt'); toggleMobileNav(false)"><i class="fas fa-archive"></i> Archive</a>
 
             <div class="mobile-nav-group-title">ระบบงาน</div>
@@ -2476,12 +2478,13 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             </ul>
                         </div>
                         <div class="topnav-group">
-                            <a class="dropdown-toggle" onclick="toggleTopnavDropdown(this, event)" data-group-sections="items,tools,borrowedItems,stockTakeMgmt"><i class="fas fa-box"></i> <span>คลัง & อุปกรณ์</span></a>
+                            <a class="dropdown-toggle" onclick="toggleTopnavDropdown(this, event)" data-group-sections="items,tools,borrowedItems,stockTakeMgmt,takenMarks"><i class="fas fa-box"></i> <span>คลัง & อุปกรณ์</span></a>
                             <ul class="topnav-dropdown-menu">
                                 <li class="dropdown-item" onclick="goTo('items')"><i class="fas fa-box"></i> รายการอะไหล่</li>
                                 <li class="dropdown-item" onclick="goTo('tools')"><i class="fas fa-toolbox"></i> รายการเครื่องมือ</li>
                                 <li class="dropdown-item" onclick="goTo('borrowedItems')"><i class="fas fa-handshake"></i> รายการยืม/คืน</li>
                                 <li class="dropdown-item" onclick="goTo('stockTakeMgmt')"><i class="fas fa-clipboard-check"></i> ตรวจนับสต็อก</li>
+                                <li class="dropdown-item admin-only-element" onclick="goTo('takenMarks')"><i class="fas fa-hand-holding"></i> หยิบไปก่อน (ยังไม่เบิก)</li>
                             </ul>
                         </div>
                         <div class="topnav-group">
@@ -4200,6 +4203,35 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div id="takenMarks" class="section-view">
+                    <div class="mb-4 d-flex align-items-center gap-3 flex-wrap">
+                        <div style="width:42px;height:42px;background:rgba(251,191,36,.12);border-radius:12px;display:flex;align-items:center;justify-content:center"><i class="fas fa-hand-holding" style="color:#fbbf24"></i></div>
+                        <div class="flex-grow-1">
+                            <h3 class="fw-bold mb-0" style="color:rgba(255,255,255,.9)">หยิบไปก่อน (ยังไม่ได้เบิก)</h3>
+                            <p class="mb-0 small" style="color:rgba(255,255,255,.45)">จดไว้ว่าใครเอาอะไหล่ตัวไหนไป · ยังไม่ตัดสต็อกจนกว่าจะกด "เบิกจริง" · เห็นเฉพาะแอดมิน</p>
+                        </div>
+                    </div>
+                    <div class="card border-0 shadow-sm mb-4" style="background:#1a2230;border-radius:16px"><div class="card-body p-3 p-md-4">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-12 col-md-4"><label class="form-label small mb-1" style="color:#aab">รายการที่เอาไป</label>
+                                <input id="mkItem" class="form-control" list="mkItemList" placeholder="พิมพ์รหัสหรือชื่อ แล้วเลือก" autocomplete="off"><datalist id="mkItemList"></datalist></div>
+                            <div class="col-6 col-md-2"><label class="form-label small mb-1" style="color:#aab">จำนวน</label><input id="mkQty" type="number" min="1" step="1" value="1" class="form-control"></div>
+                            <div class="col-6 col-md-2"><label class="form-label small mb-1" style="color:#aab">ใครเอาไป</label><input id="mkBy" class="form-control" placeholder="เช่น A" autocomplete="off"></div>
+                            <div class="col-12 col-md-3"><label class="form-label small mb-1" style="color:#aab">รายละเอียด</label><input id="mkNote" class="form-control" placeholder="เช่น เอาไปซ่อมเครื่อง 3" autocomplete="off"></div>
+                            <div class="col-12 col-md-1 d-grid"><button class="btn btn-warning fw-bold" onclick="saveTakenMark()"><i class="fas fa-plus"></i></button></div>
+                        </div>
+                    </div></div>
+                    <div class="d-flex gap-2 mb-2 flex-wrap align-items-center">
+                        <div class="btn-group btn-group-sm" id="mkFilter">
+                            <button class="btn btn-outline-warning active" data-f="open" onclick="setMarkFilter('open')">ยังค้างอยู่</button>
+                            <button class="btn btn-outline-secondary" data-f="all" onclick="setMarkFilter('all')">ทั้งหมด</button>
+                        </div>
+                        <input id="mkSearch" class="form-control form-control-sm" style="max-width:240px" placeholder="ค้นหาชื่อ/รายการ" oninput="renderTakenMarks()">
+                        <button class="btn btn-sm btn-outline-light ms-auto" onclick="loadTakenMarks()"><i class="fas fa-sync-alt me-1"></i>รีเฟรช</button>
+                    </div>
+                    <div id="mkList"></div>
                 </div>
 
                 <div id="stockTakeMgmt" class="section-view">
@@ -6126,6 +6158,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         setTimeout(function(){ if(typeof syncMasterDataTags === 'function') syncMasterDataTags(); }, 50);
                     }
                     if(sectionId === 'notes' && typeof loadNotes === 'function') loadNotes();
+                    if(sectionId === 'takenMarks' && typeof loadTakenMarks === 'function') loadTakenMarks();
                     if(sectionId === 'stockTakeMgmt' && typeof loadStockTakeMgmt === 'function') loadStockTakeMgmt();
                     if(sectionId === 'replacementSlip' && typeof initReplacementSlipForm === 'function') initReplacementSlipForm();
                     if(sectionId === 'archiveMgmt' && typeof loadArchiveList === 'function') loadArchiveList();
@@ -8809,7 +8842,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
 
         // ===== สรุปสิ้นเดือน: เลือกเดือนได้ → Excel (หลายชีต) / พิมพ์-PDF =====
         // ===== แจ้งเตือนระบบ (แอดมิน) =====
-        const EXPECTED_API_VERSION = 'v95';   // เลขเวอร์ชันของไฟล์ api ที่หน้าเว็บนี้ต้องการ (เปลี่ยนพร้อมกับไฟล์ api)
+        const EXPECTED_API_VERSION = 'v96';   // เลขเวอร์ชันของไฟล์ api ที่หน้าเว็บนี้ต้องการ (เปลี่ยนพร้อมกับไฟล์ api)
         window._apiVersionState = null;       // null=ยังไม่ตรวจ | {ok:true,version} | {ok:false,version|null}
         function _noticeHtml(color, icon, title, text, btn) {
             return `<div class="d-flex align-items-center gap-3 flex-wrap p-3 mb-2" style="border:1px solid ${color}88;background:${color}14;border-radius:14px"><i class="fas ${icon}" style="color:${color};font-size:1.3rem"></i><div class="flex-grow-1" style="min-width:220px"><div class="fw-bold" style="color:#fff">${title}</div><div class="small" style="color:#94a3b8">${text}</div></div>${btn || ''}</div>`;
@@ -9873,6 +9906,75 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     })
                     .withFailureHandler(window._gasGenericFail)
                     .webDeleteProduct({ userId: currentUserProfile.uid, userName: currentUserProfile.name, code: code });
+            });
+        }
+
+
+        // ===== หยิบไปก่อน (ยังไม่ได้เบิก) — แอดมินเท่านั้น =====
+        var _marks = [], _markFilter = 'open';
+        function setMarkFilter(f) { _markFilter = f; document.querySelectorAll('#mkFilter button').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-f') === f); }); renderTakenMarks(); }
+        function _markFillItems() {
+            var dl = document.getElementById('mkItemList'); if (!dl || dl.childElementCount) return;
+            dl.innerHTML = (allData.items || []).concat(allData.tools || []).map(function(i){ return '<option value="' + escapeHtml(i.code + ' — ' + i.name) + '"></option>'; }).join('');
+        }
+        function loadTakenMarks() {
+            _markFillItems();
+            callGAS('webMarkList', [{ userId: currentUserProfile.uid }], function(r) {
+                if (!r || !r.success) { document.getElementById('mkList').innerHTML = '<div class="text-danger small p-3">' + escapeHtml((r && r.error) || 'โหลดไม่สำเร็จ (ต้องอัปเดตไฟล์ api เป็น v96 และรันไฟล์ SQL ก่อน)') + '</div>'; return; }
+                _marks = r.rows || []; renderTakenMarks();
+            }, function() { document.getElementById('mkList').innerHTML = '<div class="text-danger small p-3">โหลดไม่สำเร็จ</div>'; });
+        }
+        function _fmtMarkDate(iso) { try { return new Date(iso).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+        function renderTakenMarks() {
+            var q = (document.getElementById('mkSearch').value || '').trim().toLowerCase();
+            var open = _marks.filter(function(m){ return m.status === 'open'; }).length;
+            var b = document.getElementById('markOpenBadge'); if (b) { b.textContent = open; b.classList.toggle('d-none', !open); }
+            var rows = _marks.filter(function(m){
+                if (_markFilter === 'open' && m.status !== 'open') return false;
+                return !q || (m.taken_by + ' ' + m.item_name + ' ' + m.item_code + ' ' + (m.note || '')).toLowerCase().indexOf(q) >= 0;
+            });
+            var el = document.getElementById('mkList');
+            if (!rows.length) { el.innerHTML = '<div class="text-center p-4" style="color:rgba(255,255,255,.4)">' + (_markFilter === 'open' ? 'ไม่มีรายการค้าง — กรอกฟอร์มด้านบนเพื่อจดรายการใหม่' : 'ยังไม่มีรายการ') + '</div>'; return; }
+            var ST = { open: ['ยังไม่ได้เบิก', '#fbbf24'], withdrawn: ['เบิกแล้ว', '#22c55e'], returned: ['เอากลับแล้ว', '#60a5fa'], cancelled: ['ยกเลิก', '#9ca3af'] };
+            el.innerHTML = rows.map(function(m) {
+                var st = ST[m.status] || ST.open;
+                var btns = m.status === 'open' ? '<div class="d-flex gap-1 flex-wrap mt-2">'
+                    + '<button class="btn btn-sm btn-success" onclick="resolveTakenMark(' + Number(m.id) + ',\'withdraw\')"><i class="fas fa-check me-1"></i>เบิกจริง (ตัดสต็อก)</button>'
+                    + '<button class="btn btn-sm btn-outline-info" onclick="resolveTakenMark(' + Number(m.id) + ',\'return\')">เอากลับมาแล้ว</button>'
+                    + '<button class="btn btn-sm btn-outline-secondary" onclick="resolveTakenMark(' + Number(m.id) + ',\'cancel\')">ยกเลิก</button></div>'
+                    : '<div class="small mt-1" style="color:rgba(255,255,255,.4)">ปิดเมื่อ ' + _fmtMarkDate(m.closed_at) + (m.closed_by ? ' โดย ' + escapeHtml(m.closed_by) : '') + '</div>';
+                return '<div class="p-3 mb-2" style="background:#1a2230;border-radius:12px;border-left:4px solid ' + st[1] + '">'
+                    + '<div class="d-flex justify-content-between gap-2 flex-wrap"><div><b style="color:#fff">' + escapeHtml(m.taken_by) + '</b> <span style="color:rgba(255,255,255,.6)">เอา</span> <b style="color:#fbbf24">' + escapeHtml(m.item_name || m.item_code) + '</b> <span style="color:#fff">× ' + Number(m.qty) + ' ' + escapeHtml(m.unit || '') + '</span></div>'
+                    + '<span class="badge" style="background:' + st[1] + ';color:#111">' + st[0] + '</span></div>'
+                    + '<div class="small" style="color:rgba(255,255,255,.45)">รหัส ' + escapeHtml(m.item_code) + ' · จดเมื่อ ' + _fmtMarkDate(m.created_at) + '</div>'
+                    + (m.note ? '<div class="small mt-1" style="color:rgba(255,255,255,.75)">📝 ' + escapeHtml(m.note) + '</div>' : '') + btns + '</div>';
+            }).join('');
+        }
+        function saveTakenMark() {
+            var raw = (document.getElementById('mkItem').value || '').trim();
+            var code = raw.split(' — ')[0].trim();
+            var all = (allData.items || []).concat(allData.tools || []);
+            var it = all.find(function(i){ return i.code === code; }) || all.find(function(i){ return (i.name || '').trim() === raw; });
+            if (!it) { Swal.fire({ icon: 'warning', title: 'เลือกรายการจากรายชื่อที่ขึ้นมา' }); return; }
+            var qty = Number(document.getElementById('mkQty').value), by = (document.getElementById('mkBy').value || '').trim();
+            if (!by) { Swal.fire({ icon: 'warning', title: 'ใส่ชื่อคนที่เอาไป' }); return; }
+            if (!(qty > 0)) { Swal.fire({ icon: 'warning', title: 'จำนวนต้องมากกว่า 0' }); return; }
+            callGAS('webMarkSave', [{ userId: currentUserProfile.uid, userName: currentUserProfile.name, code: it.code, qty: qty, takenBy: by, note: document.getElementById('mkNote').value }], function(r) {
+                if (!r || !r.success) { Swal.fire({ icon: 'error', title: 'บันทึกไม่ได้', text: (r && r.error) || '' }); return; }
+                ['mkItem', 'mkBy', 'mkNote'].forEach(function(id){ document.getElementById(id).value = ''; }); document.getElementById('mkQty').value = 1;
+                loadTakenMarks();
+            }, window._gasGenericFail);
+        }
+        function resolveTakenMark(id, action) {
+            var m = _marks.find(function(x){ return x.id === id; }); if (!m) return;
+            var T = { withdraw: ['เบิกจริง?', 'จะตัดสต็อก ' + Number(m.qty) + ' ' + (m.unit || '') + ' ของ "' + (m.item_name || m.item_code) + '" และลงประวัติเป็นการเบิกโดย ' + m.taken_by, 'เบิกเลย'], return: ['เอากลับมาแล้ว?', 'ปิดรายการนี้ ไม่กระทบสต็อก', 'ยืนยัน'], cancel: ['ยกเลิกรายการ?', 'ปิดรายการนี้ ไม่กระทบสต็อก', 'ยกเลิกรายการ'] }[action];
+            Swal.fire({ icon: 'question', title: T[0], text: T[1], showCancelButton: true, confirmButtonText: T[2], cancelButtonText: 'ไม่' }).then(function(res) {
+                if (!res.isConfirmed) return;
+                callGAS('webMarkResolve', [{ userId: currentUserProfile.uid, userName: currentUserProfile.name, id: id, action: action }], function(r) {
+                    if (!r || !r.success) { Swal.fire({ icon: 'error', title: 'ทำไม่สำเร็จ', text: (r && r.error) || '' }); return; }
+                    if (action === 'withdraw') { try { var it = (allData.items || []).concat(allData.tools || []).find(function(i){ return i.code === m.item_code; }); if (it) it.stock = Number(it.stock) - Number(m.qty); } catch (e) {} }
+                    loadTakenMarks();
+                }, window._gasGenericFail);
             });
         }
 
