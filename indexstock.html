@@ -1229,6 +1229,20 @@ td:has(> i.fa-user-circle) { white-space: nowrap !important; }
 /* ══════════════════════════════════════════════
    Dashboard แบบ Minimal สำหรับมือถือ (เฉพาะจอ ≤768px)
    ══════════════════════════════════════════════ */
+/* ปุ่มจัดการรายการคลัง: กะทัดรัด ไม่ล้นขอบ */
+.inv-act{display:flex;gap:4px;justify-content:center;align-items:center;flex-wrap:nowrap}
+.inv-act .btn{min-width:32px;height:32px;padding:0 6px;line-height:1}
+.ml-card-actions .inv-act{width:100%}
+.ml-card-actions .inv-act .btn{flex:1;height:36px}
+#itemsTable,#toolsTable{width:100%;table-layout:fixed}
+#itemsTable td,#toolsTable td{overflow-wrap:anywhere}
+#itemsTable td:last-child,#toolsTable td:last-child{overflow:visible}
+#itemsTable th,#toolsTable th{white-space:nowrap}
+.inv-more-pop{position:fixed;z-index:3000;min-width:170px;background:#232838;border:1px solid #2a2f3d;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);padding:6px}
+.inv-more-pop button{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;color:#e5e7eb;padding:9px 12px;border-radius:8px;text-align:left;font-size:.95rem}
+.inv-more-pop button:hover{background:rgba(255,255,255,.07)}
+.inv-more-pop button.danger{color:#f87171}
+@media (max-width:1100px){#itemsTable,#toolsTable{table-layout:auto;min-width:880px}}
 @media (max-width: 768px) {
     /* Ensure content stays full width and centered on mobile regardless of collapse status */
     #sidebar { display: none !important; }
@@ -3265,7 +3279,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     </div>
                     <div class="table-container p-0" id="itemsTableContainer">
                         <div id="itemsCardListMobile" class="mobile-card-list" style="display:none;flex-direction:column;gap:10px;padding:12px"></div>
-                        <div class="table-responsive desktop-table-view"><table class="table table-hover align-middle" id="itemsTable"><thead><tr><th width="3%" class="admin-only-element text-center"><input type="checkbox" id="itemsCheckAll" onclick="toggleSelectAllInventory('item', this.checked)" title="เลือกทั้งหมด"></th><th width="12%">รหัส</th><th width="18%">ชื่อรายการ</th><th width="10%">หมวดหมู่</th><th width="10%">ตำแหน่ง</th><th width="8%" class="text-center">รูป</th><th width="8%" class="text-center" id="itemsThStock">คงเหลือ</th><th width="6%">หน่วย</th><th width="9%" class="text-end price-only-element">มูลค่า</th><th width="11%" class="text-center" id="itemsThStatus">สถานะ</th><th width="17%" class="text-center">เครื่องมือผู้ดูแล</th></tr></thead><tbody></tbody></table></div>
+                        <div class="table-responsive desktop-table-view"><table class="table table-hover align-middle" id="itemsTable"><thead><tr><th width="3%" class="admin-only-element text-center"><input type="checkbox" id="itemsCheckAll" onclick="toggleSelectAllInventory('item', this.checked)" title="เลือกทั้งหมด"></th><th width="10%">รหัส</th><th width="18%">ชื่อรายการ</th><th width="10%">หมวดหมู่</th><th width="9%">ตำแหน่ง</th><th width="7%" class="text-center">รูป</th><th width="7%" class="text-center" id="itemsThStock">คงเหลือ</th><th width="5%">หน่วย</th><th width="8%" class="text-end price-only-element">มูลค่า</th><th width="12%" class="text-center" id="itemsThStatus">สถานะ</th><th width="11%" class="text-center">จัดการ</th></tr></thead><tbody></tbody></table></div>
                     </div>
                 </div>
 
@@ -3296,7 +3310,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     </div>
                     <div class="table-container p-0" id="toolsTableContainer">
                         <div id="toolsCardListMobile" class="mobile-card-list" style="display:none;flex-direction:column;gap:10px;padding:12px"></div>
-                        <div class="table-responsive desktop-table-view"><table class="table table-hover align-middle" id="toolsTable"><thead><tr><th width="3%" class="admin-only-element text-center"><input type="checkbox" id="toolsCheckAll" onclick="toggleSelectAllInventory('tool', this.checked)" title="เลือกทั้งหมด"></th><th width="12%">รหัส</th><th width="18%">ชื่อเครื่องมือ</th><th width="10%">หมวดหมู่</th><th width="10%">ตำแหน่ง</th><th width="8%" class="text-center">รูป</th><th width="8%" class="text-center">พร้อมใช้</th><th width="6%">หน่วย</th><th width="9%" class="text-end price-only-element">มูลค่า</th><th width="11%" class="text-center">สถานะ</th><th width="17%" class="text-center">เครื่องมือผู้ดูแล</th></tr></thead><tbody></tbody></table></div>
+                        <div class="table-responsive desktop-table-view"><table class="table table-hover align-middle" id="toolsTable"><thead><tr><th width="3%" class="admin-only-element text-center"><input type="checkbox" id="toolsCheckAll" onclick="toggleSelectAllInventory('tool', this.checked)" title="เลือกทั้งหมด"></th><th width="10%">รหัส</th><th width="18%">ชื่อเครื่องมือ</th><th width="10%">หมวดหมู่</th><th width="9%">ตำแหน่ง</th><th width="7%" class="text-center">รูป</th><th width="7%" class="text-center">พร้อมใช้</th><th width="5%">หน่วย</th><th width="8%" class="text-end price-only-element">มูลค่า</th><th width="12%" class="text-center">สถานะ</th><th width="11%" class="text-center">จัดการ</th></tr></thead><tbody></tbody></table></div>
                     </div>
                 </div>
 
@@ -9712,14 +9726,16 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         }
                     }
                     
+                    // ปุ่มจัดการแบบกะทัดรัด: ปุ่มหลัก (+/− หรือ แจ้งเสีย/ซ่อมแล้ว) + ปุ่ม ⋯ รวม QR/แก้ไข/ลบ — ไม่ล้นขอบการ์ด/ตาราง
+                    const _b = (cls, click, title, icon, extra) => `<button class="btn btn-sm btn-light border ${cls}" onclick="${click}" title="${title}"${extra || ''}><i class="fas ${icon}"></i></button>`;
+                    const qrBtn = _b('text-primary', `showQRCode('${safeCode}', '${safeName}')`, 'แสดง QR Code', 'fa-qrcode');
                     if (currentUserProfile.role === 'admin') {
-                        let qrBtn = `<button class="btn btn-sm btn-light text-primary border me-1" onclick="showQRCode('${safeCode}', '${safeName}')" title="แสดง QR Code"><i class="fas fa-qrcode"></i></button>`;
-                        let editBtn = `<button class="btn btn-sm btn-light text-warning border" onclick="openEditItemModal('${safeCode}', '${safeName}', '${safeCat}', '${safeUnit}', ${item.min}, '${safeType}', '${safeLocation}', ${Number(item.price) || 0})" title="แก้ไข"><i class="fas fa-edit"></i></button><button class="btn btn-sm btn-light text-danger border ms-1" onclick="deleteProductItem('${safeCode}', '${safeName}', '${safeType}')" title="ลบรายการ"><i class="fas fa-trash-alt"></i></button>`;
-                        if(type === 'item') { actionButtons = `<div class="d-flex justify-content-center gap-1">${qrBtn}${editBtn}<button class="btn btn-sm btn-light text-success border ms-1" onclick="openAdjustModal('${safeCode}', '${safeName}', '${safeUnit}', 'add')" title="เพิ่มยอดแมนนวล"><i class="fas fa-plus"></i></button><button class="btn btn-sm btn-light text-danger border" onclick="openAdjustModal('${safeCode}', '${safeName}', '${safeUnit}', 'remove')" title="ลดยอดแมนนวล"><i class="fas fa-minus"></i></button></div>`; } 
-                        else if (type === 'tool') { actionButtons = `<div class="d-flex justify-content-center gap-1">${qrBtn}${editBtn}<button class="btn btn-sm btn-light text-danger border ms-1" onclick="openDamageModal('${safeCode}', '${safeName}', '${safeUnit}')" title="แจ้งเสีย"><i class="fas fa-heart-broken"></i></button><button class="btn btn-sm btn-light text-success border" onclick="openRepairModal('${safeCode}', '${safeName}', '${safeUnit}', 1)" title="ซ่อมแล้ว"><i class="fas fa-tools"></i></button></div>`; }
+                        const moreBtn = _b('text-secondary', `openInvMore(event,'${safeCode}','${safeType}')`, 'เพิ่มเติม: QR / แก้ไข / ลบ', 'fa-ellipsis-h');
+                        if (type === 'item') { actionButtons = `<div class="inv-act">${_b('text-success', `openAdjustModal('${safeCode}', '${safeName}', '${safeUnit}', 'add')`, 'เพิ่มยอดแมนนวล', 'fa-plus')}${_b('text-danger', `openAdjustModal('${safeCode}', '${safeName}', '${safeUnit}', 'remove')`, 'ลดยอดแมนนวล', 'fa-minus')}${moreBtn}</div>`; }
+                        else if (type === 'tool') { actionButtons = `<div class="inv-act">${_b('text-danger', `openDamageModal('${safeCode}', '${safeName}', '${safeUnit}')`, 'แจ้งเสีย', 'fa-heart-broken')}${_b('text-success', `openRepairModal('${safeCode}', '${safeName}', '${safeUnit}', 1)`, 'ซ่อมแล้ว', 'fa-tools')}${moreBtn}</div>`; }
                     } else {
-                        let qrBtn = `<button class="btn btn-sm btn-light text-primary border" onclick="showQRCode('${safeCode}', '${safeName}')" title="แสดง QR Code"><i class="fas fa-qrcode"></i></button>`;
-                        if (type === 'item') { actionButtons = `<div class="d-flex justify-content-center">${qrBtn}</div>`; } else if (type === 'tool') { actionButtons = `<div class="d-flex justify-content-center gap-1">${qrBtn}<button class="btn btn-sm btn-outline-danger" onclick="openDamageModal('${safeCode}', '${safeName}', '${safeUnit}')"><i class="fas fa-heart-broken"></i> ส่งแจ้งเสีย</button></div>`; }
+                        if (type === 'item') { actionButtons = `<div class="inv-act">${qrBtn}</div>`; }
+                        else if (type === 'tool') { actionButtons = `<div class="inv-act">${qrBtn}<button class="btn btn-sm btn-outline-danger" onclick="openDamageModal('${safeCode}', '${safeName}', '${safeUnit}')"><i class="fas fa-heart-broken"></i> แจ้งเสีย</button></div>`; }
                     }
                     // ★ เพิ่ม: ถ้าอยู่โหมด "รับเข้า/เบิกออก" (เฉพาะตารางอะไหล่ ไม่ใช่เครื่องมือ) ให้แสดงยอดสะสม
                     // แทนยอดคงเหลือ/สถานะ — คำนวณจาก log ประวัติจริงของรหัสอะไหล่นั้น ไม่ใช่ค่า mock
@@ -9975,6 +9991,30 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     if (action === 'withdraw') { try { var it = (allData.items || []).concat(allData.tools || []).find(function(i){ return i.code === m.item_code; }); if (it) it.stock = Number(it.stock) - Number(m.qty); } catch (e) {} }
                     loadTakenMarks();
                 }, window._gasGenericFail);
+            });
+        }
+
+
+        function openInvMore(ev, code, type) {
+            ev.stopPropagation();
+            var old = document.querySelector('.inv-more-pop'); if (old) old.remove();
+            var list = type === 'tool' ? allData.tools : allData.items;
+            var it = (list || []).find(function(i){ return i.code === code; }); if (!it) return;
+            var r = ev.currentTarget.getBoundingClientRect();
+            var pop = document.createElement('div'); pop.className = 'inv-more-pop';
+            pop.innerHTML = '<button data-a="qr"><i class="fas fa-qrcode text-primary"></i> แสดง QR Code</button><button data-a="edit"><i class="fas fa-edit text-warning"></i> แก้ไข</button><button data-a="del" class="danger"><i class="fas fa-trash-alt"></i> ลบรายการ</button>';
+            document.body.appendChild(pop);
+            var w = pop.offsetWidth, h = pop.offsetHeight;
+            var left = Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w));
+            var top = r.bottom + 6 + h > window.innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6;
+            pop.style.left = left + 'px'; pop.style.top = top + 'px';
+            function close() { pop.remove(); document.removeEventListener('click', close, true); window.removeEventListener('scroll', close, true); }
+            setTimeout(function(){ document.addEventListener('click', close, true); window.addEventListener('scroll', close, true); }, 0);
+            pop.addEventListener('click', function(e) {
+                var b = e.target.closest('button'); if (!b) return; var a = b.getAttribute('data-a'); close();
+                if (a === 'qr') showQRCode(it.code, it.name);
+                else if (a === 'edit') openEditItemModal(it.code, it.name, getItemCategory(it), it.unit || '', it.min, type, it.location || '', Number(it.price) || 0);
+                else if (a === 'del') deleteProductItem(it.code, it.name, type);
             });
         }
 
