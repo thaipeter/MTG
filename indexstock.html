@@ -2502,7 +2502,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             </ul>
                         </div>
                         <div class="topnav-group">
-                            <a class="dropdown-toggle" onclick="toggleTopnavDropdown(this, event)" data-group-sections="items,tools,borrowedItems,stockTakeMgmt,takenMarks"><i class="fas fa-box"></i> <span>คลัง & อุปกรณ์</span></a>
+                            <a class="dropdown-toggle tn-home" onclick="goHomeFromNav(event,'items')" data-group-sections="items,tools,borrowedItems,stockTakeMgmt,takenMarks"><i class="fas fa-box"></i> <span>คลัง & อุปกรณ์</span><span class="tn-home-caret" onclick="toggleTopnavDropdown(this.parentElement, event)" title="เมนูย่อย">▾</span></a>
                             <ul class="topnav-dropdown-menu">
                                 <li class="dropdown-item" onclick="goTo('items')"><i class="fas fa-box"></i> รายการอะไหล่</li>
                                 <li class="dropdown-item" onclick="goTo('tools')"><i class="fas fa-toolbox"></i> รายการเครื่องมือ</li>
@@ -2512,7 +2512,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             </ul>
                         </div>
                         <div class="topnav-group">
-                            <a class="dropdown-toggle" onclick="toggleTopnavDropdown(this, event)" data-group-sections="monthlyOrders,qrManagement,history,receiptPrint,replacementSlip,archiveMgmt"><i class="fas fa-shopping-cart"></i> <span>เอกสาร & ตรวจสอบ</span></a>
+                            <a class="dropdown-toggle tn-home" onclick="goHomeFromNav(event,'monthlyOrders')" data-group-sections="monthlyOrders,qrManagement,history,receiptPrint,replacementSlip,archiveMgmt"><i class="fas fa-shopping-cart"></i> <span>เอกสาร & ตรวจสอบ</span><span class="tn-home-caret" onclick="toggleTopnavDropdown(this.parentElement, event)" title="เมนูย่อย">▾</span></a>
                             <ul class="topnav-dropdown-menu">
                                 <li class="dropdown-item" onclick="goTo('monthlyOrders')"><i class="fas fa-shopping-cart"></i> ใบสั่งซื้อ (Orders)</li>
                                 <li class="dropdown-item" onclick="goTo('qrManagement')"><i class="fas fa-qrcode"></i> จัดการ QR Code</li>
@@ -2523,7 +2523,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             </ul>
                         </div>
                         <div class="topnav-group">
-                            <a class="dropdown-toggle" onclick="toggleTopnavDropdown(this, event)" data-group-sections="notes,aiCenter"><i class="fas fa-sticky-note"></i> <span>บันทึก & AI</span></a>
+                            <a class="dropdown-toggle tn-home" onclick="goHomeFromNav(event,'notes')" data-group-sections="notes,aiCenter"><i class="fas fa-sticky-note"></i> <span>บันทึก & AI</span><span class="tn-home-caret" onclick="toggleTopnavDropdown(this.parentElement, event)" title="เมนูย่อย">▾</span></a>
                             <ul class="topnav-dropdown-menu">
                                 <li class="dropdown-item" onclick="goTo('notes')"><i class="fas fa-sticky-note"></i> สมุดบันทึก</li>
                                 <li class="dropdown-item" onclick="goTo('aiCenter')"><i class="fas fa-robot"></i> AI วิเคราะห์คลัง</li>
@@ -5593,11 +5593,11 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             });
         });
 
-        // กดคำว่า "ภาพรวม" = กลับหน้าแรก (แดชบอร์ด) จากทุกหน้า | กดลูกศร = เปิดเมนูย่อย
-        function goHomeFromNav(evt) {
+        // กดชื่อกลุ่มเมนู = ไปหน้าหลักของกลุ่มทันที (ภาพรวม→แดชบอร์ด, คลัง→รายการอะไหล่, เอกสาร→ใบสั่งซื้อ, บันทึก→สมุดบันทึก) | กด ▾ = เปิดเมนูย่อย
+        function goHomeFromNav(evt, sec) {
             if (evt) evt.stopPropagation();
             document.querySelectorAll('.topnav-dropdown-menu').forEach(function(m) { m.style.display = 'none'; });
-            goTo('dashboard');
+            goTo(sec || 'dashboard');
             try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); }
         }
         function toggleTopnavDropdown(toggleEl, evt) {
