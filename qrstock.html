@@ -1709,7 +1709,7 @@ const ROLE_CONFIG = {
 /* ══ INIT ══ */
 window.addEventListener('DOMContentLoaded', () => {
   show('loadingScreen');
-  callGAS('getInventoryData', [], data => {
+  callGAS('getInventoryData', ['public'], data => {   // ก่อนล็อกอินได้เฉพาะรายชื่อ+โลโก้ (ข้อมูลคลังเต็มโหลดหลังล็อกอิน)
     allData = data || {};
     applyBrandingToLoginScreen(allData.settings || {});
     hide('loadingScreen');
@@ -1726,8 +1726,11 @@ window.addEventListener('DOMContentLoaded', () => {
           const userExists = (allData.users || []).some(x => x.userId === session.uid);
           if (userExists) {
             populateUsers(allData.users || []);
-            loginSuccess(session.uid);
             restored = true;
+            loadFullThenLogin(session.uid, () => {   // token หมดอายุ/ใช้ไม่ได้ → กลับหน้าล็อกอิน
+              try { localStorage.removeItem('sb_user_session'); localStorage.removeItem('sb_qr_sess_token'); } catch (e) {}
+              show('loginScreen'); document.getElementById('appWrap').classList.remove('visible');
+            });
           } else {
             localStorage.removeItem('sb_user_session');
           }
@@ -1964,6 +1967,20 @@ function clearPin() {
   document.getElementById('loginBtn').disabled = true;
 }
 
+// โหลดข้อมูลคลังเต็ม (ต้องมี token) แล้วค่อยเข้าแอป — ก่อนล็อกอินเซิร์ฟเวอร์ส่งให้เฉพาะรายชื่อ
+function loadFullThenLogin(uid, onFail) {
+  show('loadingScreen');
+  callGAS('getInventoryData', [], full => {
+    hide('loadingScreen');
+    if (full && full.authed) {
+      const pu = allData.users || [];
+      allData = full;
+      allData.users = (full.users || []).map(u => { const o = pu.find(x => x.userId === u.userId); return (o && o.photoUrl) ? Object.assign({}, u, { photoUrl: o.photoUrl }) : u; });
+      loginSuccess(uid);
+    } else if (onFail) onFail();
+  }, () => { hide('loadingScreen'); if (onFail) onFail(); });
+}
+
 function doLogin() {
   const uid = document.getElementById('loginUid').value;
   const pin = pinBuffer;
@@ -1977,11 +1994,13 @@ function doLogin() {
     if (isValid) {
       if (res.token) setSessionToken(res.token);
       failedAttemptsMap[uid] = 0;
-      loginSuccess(uid);
+      loadFullThenLogin(uid, () => { clearPin(); const le = document.getElementById('loginError'); le.textContent = 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่'; le.style.display = 'block'; });
     }
     else { 
       clearPin(); 
-      document.getElementById('loginError').style.display = 'block'; 
+      const le = document.getElementById('loginError');
+      le.textContent = (res && res.locked) ? ('ใส่ PIN ผิดหลายครั้ง ถูกล็อกชั่วคราว ลองใหม่ในอีก ' + Math.max(1, Math.ceil((res.retryAfterSec || 60) / 60)) + ' นาที') : 'PIN ไม่ถูกต้อง กรุณาลองใหม่';
+      le.style.display = 'block'; 
       failedAttemptsMap[uid] = (failedAttemptsMap[uid] || 0) + 1;
       if (failedAttemptsMap[uid] >= 3) {
         callGAS('webReportFailedLoginAttempt', [uid, failedAttemptsMap[uid]], () => {});

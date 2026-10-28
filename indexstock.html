@@ -6601,6 +6601,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             if (isGASLogin) {
                 // preload inventory พร้อมกับ verify PIN เลย — ไม่ต้องรอ 2 รอบ
                 let _pinValid = null;
+                let _pinLocked = 0;
                 let _inventoryData = null;
                 let _pinDone = false;
                 let _dataDone = false;
@@ -6614,6 +6615,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     if (!_pinValid) {
                         if (loginCard) { loginCard.classList.remove('glow-green'); loginCard.classList.add('glow-red'); }
                         if (loginPinInput) { loginPinInput.classList.remove('glow-green'); loginPinInput.classList.add('glow-red'); loginPinInput.select(); }
+                        const _le = document.getElementById('loginError');
+                        if (_le) { if (!_le.dataset.def) _le.dataset.def = _le.innerHTML; _le.innerHTML = _pinLocked ? '<i class="fas fa-lock me-1"></i> ใส่รหัสผิดหลายครั้ง ถูกล็อกชั่วคราว ลองใหม่ในอีก ' + _pinLocked + ' นาที' : _le.dataset.def; }
                         document.getElementById('loginError').classList.remove('d-none');
                         webFailedAttempts[uid] = (webFailedAttempts[uid] || 0) + 1;
                         if (webFailedAttempts[uid] >= 3) {
@@ -6685,6 +6688,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 function _onPinResult(res) {
                     if (res && typeof res === 'object') {
                         _pinValid = !!res.valid;
+                        _pinLocked = res.locked ? Math.max(1, Math.ceil((res.retryAfterSec || 60) / 60)) : 0;
                         _needsSetup = !!res.needsSetup;
                         // ★ เพิ่ม: เก็บ session token ที่ backend ออกให้ตอน login สำเร็จ
                         if (_pinValid && res.token) setSessionToken(res.token);
@@ -6692,7 +6696,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         _pinValid = !!res;
                     }
                     _pinDone = true;
-                    tryFinishLogin();
+                    // ★ ความปลอดภัย: เซิร์ฟเวอร์ไม่ส่งข้อมูลคลังให้คนที่ยังไม่ล็อกอิน → โหลดหลังได้ token แล้วเท่านั้น
+                    if (_pinValid) { _loadInv(); } else { _dataDone = true; tryFinishLogin(); }
                 }
                 function _onPinFail(err) {
                     _pinDone = true; _dataDone = true;
@@ -6737,10 +6742,12 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         Swal.fire({ icon: 'warning', title: 'โหลดข้อมูลคลังไม่สำเร็จ', text: 'เข้าสู่ระบบสำเร็จ แต่ดึงข้อมูลคลังจากชีตไม่ได้ (' + String(err || 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้') + ') กรุณากดรีเฟรชหน้า (F5) เพื่อลองใหม่', confirmButtonText: 'รีเฟรชตอนนี้', showCancelButton: true, cancelButtonText: 'ไว้ทีหลัง' }).then(function(r) { if (r.isConfirmed) location.reload(); });
                     }, 900);
                 }
-                if (typeof google !== 'undefined' && google.script && google.script.run && typeof google.script.run.getInventoryData === 'function') {
-                    google.script.run.withSuccessHandler(_onDataResult).withFailureHandler(_onDataFail).getInventoryData();
-                } else {
-                    callGAS('getInventoryData', [], _onDataResult, _onDataFail);
+                function _loadInv() {
+                    if (typeof google !== 'undefined' && google.script && google.script.run && typeof google.script.run.getInventoryData === 'function') {
+                        google.script.run.withSuccessHandler(_onDataResult).withFailureHandler(_onDataFail).getInventoryData();
+                    } else {
+                        callGAS('getInventoryData', [], _onDataResult, _onDataFail);
+                    }
                 }
             }
         }
