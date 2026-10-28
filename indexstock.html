@@ -139,7 +139,7 @@
 .db2-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:1.1rem}
 .db2-title{font-size:1.9rem;font-weight:800;color:#fff;margin:0;letter-spacing:-.3px}
 .db2-sub{color:#94a3b8;font-size:.9rem;margin:2px 0 0}
-#dashboard .stat-card{--acc:#e8a020;border:1px solid var(--border-color)!important;border-radius:18px!important;padding:16px 18px!important;background:var(--card-bg)!important}
+#dashboard .stat-card{--acc:#e8a020;border:1px solid var(--border-color)!important;border-radius:16px!important;padding:16px 18px!important;background:var(--card-bg)!important}
 #dashboard .stat-card.border-info{--acc:#38bdf8}
 #dashboard .stat-card.border-danger{--acc:#f87171}
 #dashboard .stat-card.border-success{--acc:#4ade80}
@@ -150,8 +150,8 @@
 #dashboard .stat-card .stat-value{font-size:2.25rem!important;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
 #dashboard .stat-card .stat-icon{width:40px!important;height:40px!important;border-radius:12px!important;background:color-mix(in srgb,var(--acc) 16%,transparent)!important;color:var(--acc)!important;font-size:1.05rem!important;margin:0!important}
 #dashboard .stat-card canvas{opacity:.9}
-#dashboard .card{border-radius:20px!important;border:1px solid rgba(255,255,255,.08)!important}
-#dashboard .row.g-4.mt-0.mb-4>*>.card{overflow:hidden;border-radius:20px!important}
+#dashboard .card{border:1px solid rgba(255,255,255,.08)!important}
+#dashboard .row.g-4.mt-0.mb-4>*>.card{overflow:hidden}
 #dashboard .row.g-4.mt-0.mb-4>*>.card>.card-body{border-radius:inherit;background:transparent}
 #dashboard .row.g-4.mt-0.mb-4>*{margin-top:0!important}
 #dashStatGrid{margin-bottom:1rem!important}
@@ -519,8 +519,11 @@
         .page-content{padding:24px;flex-grow:1;background:var(--light-bg)}
 .card,.table-container{background:var(--card-bg);border-radius:var(--radius-lg);border:1px solid var(--border-color);box-shadow:var(--shadow-md);transition:all 0.25s ease}
 .card:hover{border-color:rgba(255,255,255,0.12);box-shadow:var(--shadow-lg)}
-.card-header{background:rgba(255,255,255,0.02)!important;border-bottom:1px solid var(--border-color)!important;border-radius:var(--radius-lg) var(--radius-lg) 0 0!important;padding:16px 20px!important}
+.card-header{background:rgba(255,255,255,0.02)!important;border-bottom:1px solid var(--border-color)!important;border-radius:var(--radius-xl) var(--radius-xl) 0 0!important;padding:16px 20px!important}
 .stat-card{background:var(--card-bg);border-radius:var(--radius-lg);padding:18px;border:1px solid var(--border-color);height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);box-shadow:var(--shadow-sm)}
+/* มุมการ์ดเท่ากันทั้งระบบ (ทุกหน้า) */
+.card,.stat-card,.table-container{border-radius:var(--radius-xl)!important}
+.card>.card-body:last-child{border-bottom-left-radius:inherit;border-bottom-right-radius:inherit}
 
 /* 🤖 Futuristic AI Center Glassmorphism Styling */
 .ai-header-icon {
@@ -890,7 +893,7 @@ p, span, div, li { color: inherit; }
 /* Settings form inputs */
 #settings label.form-label{color:rgba(255,255,255,.5);font-size:.78rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
 #settings .form-label { color:rgba(255,255,255,.45) !important; font-size:.73rem !important; font-weight:700 !important; letter-spacing:1px !important; text-transform:uppercase !important; margin-bottom:5px !important; }
-#settings .card { background:rgba(255,255,255,.05) !important; border:1px solid rgba(255,255,255,.08) !important; border-radius:14px !important; }
+#settings .card { background:rgba(255,255,255,.05) !important; border:1px solid rgba(255,255,255,.08) !important; }
 #settings h5.fw-bold { color:rgba(255,255,255,.85) !important; }
 #settings .border-start { border-color:#a78bfa !important; }
 #settings .form-check-input { background-color:rgba(255,255,255,.1) !important; border-color:rgba(255,255,255,.2) !important; }
