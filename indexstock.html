@@ -521,6 +521,7 @@
 .card:hover{border-color:rgba(255,255,255,0.12);box-shadow:var(--shadow-lg)}
 .card-header{background:rgba(255,255,255,0.02)!important;border-bottom:1px solid var(--border-color)!important;border-radius:var(--radius-xl) var(--radius-xl) 0 0!important;padding:16px 20px!important}
 .stat-card{background:var(--card-bg);border-radius:var(--radius-lg);padding:18px;border:1px solid var(--border-color);height:100%;display:flex;flex-direction:column;position:relative;overflow:hidden;transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);box-shadow:var(--shadow-sm)}
+.topnav-menu .tn-home::after{display:none!important}
 /* มุมการ์ดเท่ากันทั้งระบบ (ทุกหน้า) */
 .card,.stat-card,.table-container{border-radius:var(--radius-xl)!important}
 .card>.card-body:last-child{border-bottom-left-radius:inherit;border-bottom-right-radius:inherit}
@@ -2490,7 +2491,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     <!-- Top Menu (ย้ายจาก Sidebar ด้านซ้ายมาไว้บน) -->
                     <div class="topnav-menu">
                         <div class="topnav-group">
-                            <a class="dropdown-toggle" onclick="toggleTopnavDropdown(this, event)" data-group-sections="dashboard,transactionsInOut,pendingApprovals"><i class="fas fa-th-large"></i> <span>ภาพรวม</span></a>
+                            <a class="dropdown-toggle tn-home" onclick="goHomeFromNav(event)" data-group-sections="dashboard,transactionsInOut,pendingApprovals" title="กลับหน้าแรก (แดชบอร์ด)"><i class="fas fa-th-large"></i> <span>ภาพรวม</span><i class="fas fa-chevron-down tn-home-caret" onclick="toggleTopnavDropdown(this.parentElement, event)" title="เมนูย่อย" style="font-size:.7rem;margin-left:8px;padding:6px 4px;opacity:.7"></i></a>
                             <ul class="topnav-dropdown-menu">
                                 <li class="dropdown-item" onclick="goTo('dashboard')"><i class="fas fa-th-large"></i> แดชบอร์ด</li>
                                 <li class="dropdown-item" onclick="goTo('transactionsInOut')"><i class="fas fa-exchange-alt"></i> รับ / เบิก</li>
@@ -5590,6 +5591,13 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             });
         });
 
+        // กดคำว่า "ภาพรวม" = กลับหน้าแรก (แดชบอร์ด) จากทุกหน้า | กดลูกศร = เปิดเมนูย่อย
+        function goHomeFromNav(evt) {
+            if (evt) evt.stopPropagation();
+            document.querySelectorAll('.topnav-dropdown-menu').forEach(function(m) { m.style.display = 'none'; });
+            goTo('dashboard');
+            try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); }
+        }
         function toggleTopnavDropdown(toggleEl, evt) {
             if (evt) evt.stopPropagation();
             var allMenus = document.querySelectorAll('.topnav-dropdown-menu');
