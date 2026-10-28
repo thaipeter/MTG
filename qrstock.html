@@ -818,6 +818,7 @@ body{display:flex;flex-direction:column}
   </div>
   <div class="register-link">
     ยังไม่มีบัญชี? <a onclick="openRegister()">สมัครใช้งาน</a>
+    <div style="margin-top:10px;font-size:12px"><a onclick="openPrivacy()" style="cursor:pointer">นโยบายข้อมูลส่วนบุคคล (PDPA)</a></div>
   </div>
 </div>
 
@@ -837,6 +838,7 @@ body{display:flex;flex-direction:column}
         <div class="reg-label">แผนก / ตำแหน่ง</div>
         <input class="reg-input" id="regDept" placeholder="เช่น ช่างซ่อมบำรุง, ฝ่ายผลิต" type="text" autocomplete="off">
       </div>
+      <div style="font-size:11.5px;color:var(--text2);margin:2px 0 10px;line-height:1.5">การสมัครถือว่ารับทราบ <a onclick="openPrivacy()" style="color:var(--amber);cursor:pointer;text-decoration:underline">นโยบายข้อมูลส่วนบุคคล</a> (เก็บชื่อ แผนก PIN และประวัติการทำรายการเพื่อใช้ในระบบคลังเท่านั้น)</div>
       <div class="reg-btn-row">
         <button class="reg-cancel-btn" onclick="closeRegister()">ยกเลิก</button>
         <button class="reg-submit-btn" onclick="goRegStep2()">ถัดไป →</button>
@@ -1477,6 +1479,13 @@ body{display:flex;flex-direction:column}
     " onmouseenter="this.style.borderColor='var(--amber)'" onmouseleave="this.style.borderColor='var(--border2)'">
       <i class="fas fa-key" style="color:var(--amber);width:18px"></i> เปลี่ยนรหัส PIN
     </button>
+    <button onclick="closeUserMenu();openPrivacy()" style="
+      width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);
+      color:var(--text);font-family:'Sarabun',sans-serif;font-size:14px;font-weight:600;
+      padding:13px 16px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;margin-bottom:8px;transition:all .15s
+    " onmouseenter="this.style.borderColor='var(--amber)'" onmouseleave="this.style.borderColor='var(--border2)'">
+      <i class="fas fa-shield-halved" style="color:var(--amber);width:18px"></i> นโยบายข้อมูลส่วนบุคคล (PDPA)
+    </button>
     <button onclick="closeUserMenu();confirmLogout()" style="
       width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);
       color:var(--red);font-family:'Sarabun',sans-serif;font-size:14px;font-weight:600;
@@ -1484,6 +1493,39 @@ body{display:flex;flex-direction:column}
     " onmouseenter="this.style.borderColor='var(--red)'" onmouseleave="this.style.borderColor='var(--border2)'">
       <i class="fas fa-sign-out-alt" style="width:18px"></i> ออกจากระบบ
     </button>
+  </div>
+</div>
+
+<!-- ════ PRIVACY NOTICE (PDPA) ════ -->
+<div class="modal-overlay" id="privacyModal" onclick="if(event.target===this)closePrivacy()" style="z-index:1200">
+  <div class="modal-box" style="max-height:88vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🛡️ นโยบายข้อมูลส่วนบุคคล</div>
+    <div class="modal-sub">ตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)</div>
+    <div style="font-size:13.5px;line-height:1.75;color:var(--text)">
+      <p style="margin:10px 0 4px;font-weight:700;color:var(--amber)">1. ข้อมูลที่เก็บ</p>
+      <p style="margin:0">ชื่อ-นามสกุล, แผนก/ตำแหน่ง, รหัส PIN สำหรับเข้าใช้งาน, รูปโปรไฟล์ (ถ้าตั้งไว้), ไอดีบัญชี LINE (เฉพาะผู้ที่ผูกไลน์เพื่อรับแจ้งเตือน), และประวัติการใช้งาน เช่น รายการเบิก/ยืม/คืน/รับเข้า วันเวลา และอุปกรณ์ที่ใช้ทำรายการ</p>
+
+      <p style="margin:12px 0 4px;font-weight:700;color:var(--amber)">2. วัตถุประสงค์</p>
+      <p style="margin:0">เพื่อยืนยันตัวตนผู้ใช้ บันทึกว่าใครเบิก/ยืม/คืนอะไหล่และเครื่องมือเมื่อใด ควบคุมสต็อก ส่งแจ้งเตือนและขออนุมัติผ่าน LINE และตรวจสอบย้อนหลังเมื่อสต็อกไม่ตรงหรือเกิดข้อผิดพลาด ไม่นำข้อมูลไปใช้เพื่อการอื่น</p>
+
+      <p style="margin:12px 0 4px;font-weight:700;color:var(--amber)">3. ใครเข้าถึงข้อมูลได้</p>
+      <p style="margin:0">ผู้ดูแลระบบ (แอดมิน) ของคลังเท่านั้น พนักงานทั่วไปเห็นเฉพาะประวัติของตนเอง ข้อมูลถูกเก็บบนบริการคลาวด์ Supabase และส่งแจ้งเตือนผ่านแพลตฟอร์ม LINE ซึ่งเป็นผู้ให้บริการภายนอกที่ระบบใช้ในการทำงาน ไม่มีการขายหรือเปิดเผยข้อมูลให้บุคคลอื่น</p>
+
+      <p style="margin:12px 0 4px;font-weight:700;color:var(--amber)">4. ระยะเวลาเก็บ</p>
+      <p style="margin:0">ประวัติการทำรายการเก็บไว้เพื่อการตรวจสอบสต็อกและบัญชี โดยย้ายเข้าที่เก็บถาวรรายเดือน และมีไฟล์สำรองอัตโนมัติรายวัน เมื่อออกจากงานหรือเลิกใช้ระบบ บัญชีจะถูกปิดและลบข้อมูลส่วนตัว (ชื่อ รูป ไอดีไลน์) ส่วนประวัติเบิกจ่ายอาจคงไว้เท่าที่จำเป็นต่อการตรวจสอบสต็อก</p>
+
+      <p style="margin:12px 0 4px;font-weight:700;color:var(--amber)">5. สิทธิ์ของท่าน</p>
+      <p style="margin:0">ท่านขอเข้าดู ขอสำเนา ขอแก้ไขข้อมูลให้ถูกต้อง ขอให้ลบ หรือคัดค้านการใช้ข้อมูลของตนได้ โดยแจ้งผู้ดูแลระบบ ซึ่งจะดำเนินการภายใน 30 วัน เว้นแต่มีเหตุที่กฎหมายหรือการตรวจสอบสต็อกจำเป็นต้องเก็บไว้</p>
+
+      <p style="margin:12px 0 4px;font-weight:700;color:var(--amber)">6. การรักษาความปลอดภัย</p>
+      <p style="margin:0">ต้องล็อกอินด้วย PIN ก่อนใช้งาน เซสชันหมดอายุอัตโนมัติ การเข้าถึงฐานข้อมูลทำผ่านเซิร์ฟเวอร์ที่ตรวจสิทธิ์ทุกครั้ง และมีบันทึกการใช้งานของผู้ดูแลระบบ กรุณาอย่าบอก PIN แก่ผู้อื่น</p>
+
+      <p style="margin:12px 0 4px;font-weight:700;color:var(--amber)">7. ติดต่อ</p>
+      <p style="margin:0">สอบถามหรือใช้สิทธิ์ได้ที่ผู้ดูแลระบบคลังอะไหล่ของท่าน การสมัครใช้งานและการใช้ระบบต่อไปถือว่ารับทราบนโยบายนี้</p>
+      <p style="margin:12px 0 0;font-size:11.5px;color:var(--text2)">ปรับปรุงล่าสุด 28 ตุลาคม 2569</p>
+    </div>
+    <div class="reg-btn-row" style="margin-top:16px"><button class="reg-submit-btn" onclick="closePrivacy()" style="width:100%">รับทราบ</button></div>
   </div>
 </div>
 
@@ -2152,6 +2194,8 @@ function openChangePin() {
   showCpStep(1);
   document.getElementById('changePinModal').classList.add('open');
 }
+function openPrivacy() { document.getElementById('privacyModal').classList.add('open'); }
+function closePrivacy() { document.getElementById('privacyModal').classList.remove('open'); }
 function closeChangePin() { document.getElementById('changePinModal').classList.remove('open'); cpOldPin = ''; cpNewPin = ''; }
 function showCpStep(n) { [1,2,3].forEach(i => document.getElementById('cpStep'+i).classList.toggle('active', i===n)); }
 
