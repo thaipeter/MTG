@@ -1408,6 +1408,18 @@ td:has(> i.fa-user-circle) { white-space: nowrap !important; }
 </style>
 
 <style>
+.login-userbox{position:relative;margin-bottom:6px}
+.login-userbox-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.35);z-index:2;pointer-events:none}
+#loginSearch{padding-left:44px!important;text-align:left!important;letter-spacing:normal!important;font-weight:600;background-color:#161922!important;color:#f8fafc!important;border:1px solid rgba(255,255,255,0.15)!important}
+#loginSearch::placeholder{letter-spacing:normal!important;font-weight:400;color:rgba(255,255,255,.4)}
+.login-hint{font-size:.78rem;color:rgba(255,255,255,.4);text-align:left;margin:0 4px 14px}
+.login-results{position:absolute;left:0;right:0;top:calc(100% + 6px);background:#1e293b;border:1px solid rgba(255,255,255,.14);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.55);z-index:30;overflow:hidden;text-align:left}
+.login-results .lr-item{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;color:#f8fafc;border-bottom:1px solid rgba(255,255,255,.06)}
+.login-results .lr-item:last-child{border-bottom:0}
+.login-results .lr-item:hover,.login-results .lr-item.lr-first{background:rgba(255,255,255,.06)}
+.login-results .lr-name{flex:1;font-weight:600}
+.login-results .lr-role{font-size:.7rem;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.18);color:#cbd5e1}
+.login-results .lr-msg{padding:14px;text-align:center;color:rgba(255,255,255,.55);font-size:.9rem}
 #loginUid {
     background-color: #161922 !important;
     color: #f8fafc !important;
@@ -1528,13 +1540,13 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             </div>
             <form id="loginForm" onsubmit="handleLogin(event)">
                 <div class="mb-4">
-                    <input type="text" class="form-control form-control-lg mb-2 text-center" id="loginSearch" placeholder="พิมพ์ชื่อของคุณ (อย่างน้อย 2 ตัวอักษร)" autocomplete="off" oninput="onLoginSearch(this.value)">
-                    <select class="form-select form-select-lg mb-3 text-center fw-bold" id="loginUid">
-                        <option value="" disabled selected>-- เลือกชื่อผู้ใช้งาน --</option>
-                        <option value="u_admin123">Test Admin (Admin)</option>
-                        <option value="u_staff123">Test Staff (Staff)</option>
-                        <option value="u_user123">Test User (User)</option>
-                    </select>
+                    <div class="login-userbox">
+                        <i class="fas fa-user login-userbox-icon"></i>
+                        <input type="text" class="form-control form-control-lg" id="loginSearch" placeholder="พิมพ์ชื่อของคุณ" autocomplete="off" oninput="onLoginSearch(this.value)" onkeydown="onLoginSearchKey(event)">
+                        <input type="hidden" id="loginUid" value="">
+                        <div id="loginResults" class="login-results" style="display:none"></div>
+                    </div>
+                    <div class="login-hint">พิมพ์ชื่ออย่างน้อย 2 ตัวอักษร แล้วแตะชื่อของคุณ</div>
                     <input type="password" class="form-control form-control-lg text-center fw-bold tracking-widest" id="loginPin" placeholder="กรอกรหัสผ่าน Dashboard" value="" autocomplete="off">
                 </div>
                 <button type="submit" class="btn btn-theme btn-lg w-100 fw-bold py-3 rounded-3 shadow-sm">เข้าสู่ระบบ</button>
@@ -6002,6 +6014,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             }
             const uSel = document.getElementById('loginUid');
             if (uSel) uSel.value = '';
+            const uBox = document.getElementById('loginSearch');
+            if (uBox) uBox.value = '';
 
             // ล้าง section ที่เปิดอยู่
             document.querySelectorAll('.section-view').forEach(s => s.classList.remove('active'));
@@ -6543,13 +6557,13 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
         let _loginSearchTimer = null;
         function onLoginSearch(val) {
             clearTimeout(_loginSearchTimer);
+            document.getElementById('loginUid').value = '';   // พิมพ์ใหม่ = ยังไม่ได้เลือกชื่อ
             const q = String(val || '').trim();
-            if (q.length < 2) { populateLoginUsers([], 'hint'); return; }
+            if (q.length < 2) { populateLoginUsers([], q.length ? 'hint' : ''); return; }
             const c = window._lsCache;
             if (c && c.complete && q.toLowerCase().indexOf(c.q.toLowerCase()) === 0) {   // พิมพ์ต่อจากเดิมและผลครบแล้ว → กรองในเครื่องทันที
                 const l = c.list.filter(u => String(u.name || '').toLowerCase().indexOf(q.toLowerCase()) >= 0);
                 populateLoginUsers(l, l.length ? 'search' : 'none');
-                if (l.length === 1) document.getElementById('loginUid').value = l[0].userId;
                 return;
             }
             populateLoginUsers([], 'searching');
@@ -6557,45 +6571,53 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 callGAS('searchLoginUsers', [q], function(res) {
                     const box = document.getElementById('loginSearch');
                     if (!box || box.value.trim() !== q) return;
-                    const list = ((res && res.users) || []).filter(u => u.role === 'admin' || u.role === 'user' || u.role === 'staff');
-                    window._lsCache = { q: q, list: list, complete: ((res && res.users) || []).length < 5 };
+                    const all = (res && res.users) || [];
+                    const list = all.filter(u => u.role === 'admin' || u.role === 'user' || u.role === 'staff');
+                    window._lsCache = { q: q, list: list, complete: all.length < 5 };
                     allData.users = list;
                     populateLoginUsers(list, list.length ? 'search' : 'none');
-                    if (list.length === 1) document.getElementById('loginUid').value = list[0].userId;
-                }, function() {});
+                }, function() { populateLoginUsers([], 'none'); });
             }, 150);
         }
+        function pickLoginUser(uid, name) {
+            document.getElementById('loginUid').value = uid;
+            document.getElementById('loginSearch').value = name;
+            populateLoginUsers([], '');
+            const le = document.getElementById('loginError'); if (le) le.classList.add('d-none');
+            const pin = document.getElementById('loginPin'); if (pin) pin.focus();
+        }
+        function onLoginSearchKey(e) {
+            if (e.key !== 'Enter') return;
+            const first = document.querySelector('#loginResults .lr-item');
+            if (first) { e.preventDefault(); pickLoginUser(first.dataset.uid, first.dataset.name); }
+        }
+        document.addEventListener('mousedown', function(e) {
+            const it = e.target.closest && e.target.closest('#loginResults .lr-item');
+            if (it) { e.preventDefault(); pickLoginUser(it.dataset.uid, it.dataset.name); }
+            else if (!(e.target.closest && e.target.closest('.login-userbox'))) { const r = document.getElementById('loginResults'); if (r) r.style.display = 'none'; }
+        });
         function populateLoginUsers(users, mode) {
-            if (mode === 'hint' || mode === 'none' || mode === 'searching' || ((!users || users.length === 0) && (window.GAS_URL || (typeof google !== 'undefined' && google.script && google.script.run && typeof google.script.run.getInventoryData === 'function')))) {
-                const sel0 = document.getElementById('loginUid');
-                if (sel0) { sel0.innerHTML = '<option value="" disabled selected>' + (mode === 'none' ? '-- ไม่พบชื่อนี้ --' : mode === 'searching' ? '-- กำลังค้นหา... --' : '-- พิมพ์ชื่อในช่องด้านบนเพื่อค้นหา --') + '</option>'; sel0.value = ''; }
-                return;
+            if (mode !== 'search' && mode !== 'hint' && mode !== 'none' && mode !== 'searching') {   // เรียกจากส่วนอื่น (โหลดหน้า/ออกจากระบบ) = ล้างช่องล็อกอิน
+                if (document.getElementById('sysTotalUserCount')) document.getElementById('sysTotalUserCount').innerText = (users || []).length || 3;
+                if (document.getElementById('footerUserBadgeCount')) document.getElementById('footerUserBadgeCount').innerText = ((users || []).length || 3) + ' ผู้ใช้';
             }
-            if (mode !== 'search' && document.getElementById('sysTotalUserCount')) document.getElementById('sysTotalUserCount').innerText = (users || []).length || 3;
-            if (mode !== 'search' && document.getElementById('footerUserBadgeCount')) document.getElementById('footerUserBadgeCount').innerText = ((users || []).length || 3) + ' ผู้ใช้';
-            const select = document.getElementById('loginUid');
-            if(!select) return;
-            if(!users || users.length === 0) {
-                users = [
-                    {userId: 'u_admin123', name: 'Test Admin', role: 'admin'},
-                    {userId: 'u_staff123', name: 'Test Staff', role: 'staff'},
-                    {userId: 'u_user123', name: 'Test User', role: 'user'}
-                ];
+            const box = document.getElementById('loginResults');
+            if (!box) return;
+            if (mode === 'search') {
+                const roleTxt = r => r === 'admin' ? 'Admin' : r === 'staff' ? 'Staff' : 'User';
+                box.innerHTML = users.map((u, i) => '<div class="lr-item' + (i === 0 ? ' lr-first' : '') + '" data-uid="' + escapeHtml(u.userId) + '" data-name="' + escapeHtml(u.name) + '"><i class="fas fa-user-circle" style="color:#94a3b8"></i><span class="lr-name">' + escapeHtml(u.name) + '</span><span class="lr-role">' + roleTxt(u.role) + '</span></div>').join('');
+                box.style.display = 'block';
+            } else if (mode === 'searching') {
+                box.innerHTML = '<div class="lr-msg"><span class="spinner-border spinner-border-sm me-2"></span>กำลังค้นหา...</div>'; box.style.display = 'block';
+            } else if (mode === 'none') {
+                box.innerHTML = '<div class="lr-msg">ไม่พบชื่อนี้ ลองพิมพ์ใหม่</div>'; box.style.display = 'block';
+            } else if (mode === 'hint') {
+                box.innerHTML = '<div class="lr-msg">พิมพ์ชื่ออย่างน้อย 2 ตัวอักษร</div>'; box.style.display = 'block';
+            } else {
+                box.innerHTML = ''; box.style.display = 'none';
             }
-            select.innerHTML = '<option value="" disabled selected>-- เลือกชื่อผู้ใช้งาน --</option>';
-            users.filter(u => u.role === 'admin' || u.role === 'user' || u.role === 'staff').forEach((u) => {
-                let opt = document.createElement('option');
-                opt.value = u.userId;
-                const label = u.role === 'admin' ? ' (Admin)' : u.role === 'staff' ? ' (Staff)' : ' (User)';
-                opt.text = u.name + label;
-                select.appendChild(opt);
-            });
-            select.value = "";
         }
 
-
-
-        
         document.addEventListener('DOMContentLoaded', () => {
             const pinInputEl = document.getElementById('loginPin');
             if (pinInputEl) {
@@ -6618,7 +6640,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     errEl.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> กรุณาเลือกชื่อผู้ใช้งานก่อนเข้าสู่ระบบ!';
                     errEl.classList.remove('d-none');
                 }
-                const sel = document.getElementById('loginUid');
+                const sel = document.getElementById('loginSearch');
                 if (sel) {
                     sel.classList.add('glow-red');
                     sel.focus();
