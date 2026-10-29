@@ -1411,6 +1411,8 @@ td:has(> i.fa-user-circle) { white-space: nowrap !important; }
 .login-userbox{position:relative;margin-bottom:16px}
 .login-userbox-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.35);z-index:2;pointer-events:none}
 #loginSearch{padding-left:44px!important;text-align:left!important;letter-spacing:normal!important;font-weight:600;background-color:#161922!important;color:#f8fafc!important;border:1px solid rgba(255,255,255,0.15)!important}
+#loginPin{padding-left:44px!important;text-align:left!important;letter-spacing:normal!important;background-color:#161922!important;color:#f8fafc!important;border:1px solid rgba(255,255,255,0.15)!important}
+.login-passbox{margin-bottom:6px}
 #loginPin::placeholder{letter-spacing:normal!important;font-weight:400}
 #loginSearch::placeholder{letter-spacing:normal!important;font-weight:400;color:rgba(255,255,255,.4)}
 .login-hint{display:flex;align-items:center;justify-content:center;gap:8px;font-size:.82rem;font-weight:600;white-space:nowrap;color:#fbbf24;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.28);border-radius:999px;padding:7px 14px;margin:0 0 12px}
@@ -1549,7 +1551,10 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         <input type="hidden" id="loginUid" value="">
                         <div id="loginResults" class="login-results" style="display:none"></div>
                     </div>
-                    <input type="password" class="form-control form-control-lg text-center fw-bold tracking-widest" id="loginPin" placeholder="กรอกรหัสผ่าน Dashboard" value="" autocomplete="off">
+                    <div class="login-userbox login-passbox">
+                        <i class="fas fa-lock login-userbox-icon"></i>
+                        <input type="password" class="form-control form-control-lg fw-bold" id="loginPin" placeholder="กรอกรหัสผ่าน Dashboard" value="" autocomplete="off">
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-theme btn-lg w-100 fw-bold py-3 rounded-3 shadow-sm">เข้าสู่ระบบ</button>
             </form>
