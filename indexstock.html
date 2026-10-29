@@ -1528,6 +1528,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             </div>
             <form id="loginForm" onsubmit="handleLogin(event)">
                 <div class="mb-4">
+                    <input type="text" class="form-control form-control-lg mb-2 text-center" id="loginSearch" placeholder="พิมพ์ชื่อของคุณ (อย่างน้อย 2 ตัวอักษร)" autocomplete="off" oninput="onLoginSearch(this.value)">
                     <select class="form-select form-select-lg mb-3 text-center fw-bold" id="loginUid">
                         <option value="" disabled selected>-- เลือกชื่อผู้ใช้งาน --</option>
                         <option value="u_admin123">Test Admin (Admin)</option>
@@ -6365,6 +6366,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         const session = JSON.parse(sessionStr);
                         if (session && session.uid && (Date.now() - session.timestamp < 86400000)) {
                             uid = session.uid;
+                            window.__sessU = { name: session.name, role: session.role };
                         } else {
                             localStorage.removeItem('sb_user_session');
                             clearSessionToken(); // ★ เพิ่ม: เซสชันหมดอายุฝั่ง client ก็ล้าง token ทิ้งด้วย
@@ -6405,7 +6407,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     allData.users = Array.isArray(users) ? users : [];
 
                     if (uid) {
-                        const u = allData.users.find(x => x.userId === uid);
+                        const u = allData.users.find(x => x.userId === uid) || (window.__sessU && window.__sessU.role ? window.__sessU : null);   // ก่อนล็อกอินไม่มีรายชื่อในเครื่อง ใช้ชื่อ/บทบาทที่จำไว้ (token ตรวจที่เซิร์ฟเวอร์)
                         if (u) {
                             currentUserProfile.uid = uid;
                             currentUserProfile.name = u.name;
@@ -6537,9 +6539,31 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             return defaultData;
         }
 
-        function populateLoginUsers(users) {
-            if (document.getElementById('sysTotalUserCount')) document.getElementById('sysTotalUserCount').innerText = (users || []).length || 3;
-            if (document.getElementById('footerUserBadgeCount')) document.getElementById('footerUserBadgeCount').innerText = ((users || []).length || 3) + ' ผู้ใช้';
+        // ค้นชื่อสำหรับล็อกอิน: เซิร์ฟเวอร์ไม่เปิดรายชื่อทั้งหมดให้คนที่ยังไม่ล็อกอิน (ต้องพิมพ์ ≥2 ตัวอักษร ได้สูงสุด 5 ชื่อ)
+        let _loginSearchTimer = null;
+        function onLoginSearch(val) {
+            clearTimeout(_loginSearchTimer);
+            const q = String(val || '').trim();
+            if (q.length < 2) { populateLoginUsers([], 'hint'); return; }
+            _loginSearchTimer = setTimeout(function() {
+                callGAS('searchLoginUsers', [q], function(res) {
+                    const box = document.getElementById('loginSearch');
+                    if (!box || box.value.trim() !== q) return;
+                    const list = ((res && res.users) || []).filter(u => u.role === 'admin' || u.role === 'user' || u.role === 'staff');
+                    allData.users = list;
+                    populateLoginUsers(list, list.length ? 'search' : 'none');
+                    if (list.length === 1) document.getElementById('loginUid').value = list[0].userId;
+                }, function() {});
+            }, 300);
+        }
+        function populateLoginUsers(users, mode) {
+            if (mode === 'hint' || mode === 'none' || ((!users || users.length === 0) && (window.GAS_URL || (typeof google !== 'undefined' && google.script && google.script.run && typeof google.script.run.getInventoryData === 'function')))) {
+                const sel0 = document.getElementById('loginUid');
+                if (sel0) { sel0.innerHTML = '<option value="" disabled selected>' + (mode === 'none' ? '-- ไม่พบชื่อนี้ --' : '-- พิมพ์ชื่อในช่องด้านบนเพื่อค้นหา --') + '</option>'; sel0.value = ''; }
+                return;
+            }
+            if (mode !== 'search' && document.getElementById('sysTotalUserCount')) document.getElementById('sysTotalUserCount').innerText = (users || []).length || 3;
+            if (mode !== 'search' && document.getElementById('footerUserBadgeCount')) document.getElementById('footerUserBadgeCount').innerText = ((users || []).length || 3) + ' ผู้ใช้';
             const select = document.getElementById('loginUid');
             if(!select) return;
             if(!users || users.length === 0) {
@@ -8882,7 +8906,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
 
         // ===== สรุปสิ้นเดือน: เลือกเดือนได้ → Excel (หลายชีต) / พิมพ์-PDF =====
         // ===== แจ้งเตือนระบบ (แอดมิน) =====
-        const EXPECTED_API_VERSION = 'v96';   // เลขเวอร์ชันของไฟล์ api ที่หน้าเว็บนี้ต้องการ (เปลี่ยนพร้อมกับไฟล์ api)
+        const EXPECTED_API_VERSION = 'v98';   // เลขเวอร์ชันของไฟล์ api ที่หน้าเว็บนี้ต้องการ (เปลี่ยนพร้อมกับไฟล์ api)
         window._apiVersionState = null;       // null=ยังไม่ตรวจ | {ok:true,version} | {ok:false,version|null}
         function _noticeHtml(color, icon, title, text, btn) {
             return `<div class="d-flex align-items-center gap-3 flex-wrap p-3 mb-2" style="border:1px solid ${color}88;background:${color}14;border-radius:14px"><i class="fas ${icon}" style="color:${color};font-size:1.3rem"></i><div class="flex-grow-1" style="min-width:220px"><div class="fw-bold" style="color:#fff">${title}</div><div class="small" style="color:#94a3b8">${text}</div></div>${btn || ''}</div>`;

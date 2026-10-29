@@ -769,7 +769,7 @@ body{display:flex;flex-direction:column}
       <div class="login-label">ชื่อผู้ใช้งาน</div>
       <div style="position:relative">
         <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px;pointer-events:none;z-index:1"></i>
-        <input class="login-input" id="loginSearch" type="text" placeholder="พิมพ์ค้นหาชื่อ..." autocomplete="off"
+        <input class="login-input" id="loginSearch" type="text" placeholder="พิมพ์ชื่อของคุณ (อย่างน้อย 2 ตัวอักษร)" autocomplete="off"
           oninput="onLoginSearchInput(this.value)" onfocus="showUserDropdown()" style="padding-left:34px">
       </div>
       <div id="loginDropdown" style="
@@ -1723,7 +1723,7 @@ window.addEventListener('DOMContentLoaded', () => {
           // ★ แก้บั๊ก: เดิมตั้งไว้ 24 ชม. (86400000) แต่ token จริงจาก backend ใช้ได้แค่ 6 ชม. (ดู
           // SESSION_TTL_SEC ใน code.gs) ทำให้ช่วง 6-24 ชม. หน้านี้เข้าใจผิดว่ายังล็อกอินอยู่ (ไม่เด้งกลับ
           // หน้า login) แต่ token จริงหมดอายุไปแล้ว กดบันทึกรายการอะไรก็ error ทันที — แก้ให้ตรงกับ backend
-          const userExists = (allData.users || []).some(x => x.userId === session.uid);
+          const userExists = true;   // ก่อนล็อกอินไม่มีรายชื่อในเครื่องแล้ว — ให้ token ที่เซิร์ฟเวอร์ตรวจแทน
           if (userExists) {
             populateUsers(allData.users || []);
             restored = true;
@@ -1858,9 +1858,11 @@ function populateUsers(users) {
 function renderUserDropdown(query) {
   const dd = document.getElementById('loginDropdown');
   const q = query.trim();
-  const filtered = q
-    ? _allUsers.filter(u => _matchesSearchQuery(u.name, q))
-    : _allUsers;
+  if (q.length < 2) {   // ไม่เปิดรายชื่อทั้งหมด — ต้องพิมพ์ก่อน
+    dd.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text3);font-size:13px">พิมพ์ชื่ออย่างน้อย 2 ตัวอักษร เพื่อค้นหา</div>';
+    return;
+  }
+  const filtered = _allUsers.filter(u => _matchesSearchQuery(u.name, q));
   if (!filtered.length) {
     dd.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text3);font-size:13px">ไม่พบชื่อที่ค้นหา</div>';
     return;
@@ -1886,7 +1888,21 @@ function onLoginSearchInput(val) {
   document.getElementById('loginError').style.display = 'none';
   renderUserDropdown(val);
   showUserDropdown();
+  clearTimeout(_loginSearchTimer);
+  const q = (val || '').trim();
+  if (q.length < 2) return;
+  _loginSearchTimer = setTimeout(() => {   // ค้นจากเซิร์ฟเวอร์ (สูงสุด 5 ชื่อ) แทนการโหลดรายชื่อทั้งหมด
+    callGAS('searchLoginUsers', [q], res => {
+      if (document.getElementById('loginSearch').value.trim() !== q) return;   // พิมพ์ต่อไปแล้ว ข้ามผลเก่า
+      const list = (res && res.users) || [];
+      const have = allData.users || [];
+      allData.users = have.filter(u => !list.some(x => x.userId === u.userId)).concat(list);
+      populateUsers(list);
+      renderUserDropdown(q);
+    }, () => {});
+  }, 250);
 }
+let _loginSearchTimer = null;
 
 function showUserDropdown() {
   const dd = document.getElementById('loginDropdown');
@@ -1975,7 +1991,8 @@ function loadFullThenLogin(uid, onFail) {
     if (full && full.authed) {
       const pu = allData.users || [];
       allData = full;
-      allData.users = (full.users || []).map(u => { const o = pu.find(x => x.userId === u.userId); return (o && o.photoUrl) ? Object.assign({}, u, { photoUrl: o.photoUrl }) : u; });
+      let sp = null; try { const ss = JSON.parse(localStorage.getItem('sb_user_session') || 'null'); if (ss && ss.uid === uid) sp = ss.photoUrl || null; } catch (e) {}
+      allData.users = (full.users || []).map(u => { const o = pu.find(x => x.userId === u.userId); const ph = (o && o.photoUrl) || (u.userId === uid ? sp : null); return ph ? Object.assign({}, u, { photoUrl: ph }) : u; });
       loginSuccess(uid);
     } else if (onFail) onFail();
   }, () => { hide('loadingScreen'); if (onFail) onFail(); });
