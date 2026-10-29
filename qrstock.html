@@ -1864,7 +1864,7 @@ function renderUserDropdown(query) {
   }
   const filtered = _allUsers.filter(u => _matchesSearchQuery(u.name, q));
   if (!filtered.length) {
-    dd.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text3);font-size:13px">ไม่พบชื่อที่ค้นหา</div>';
+    dd.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text3);font-size:13px">' + (_loginSearching ? '<i class="fas fa-spinner fa-spin me-1"></i> กำลังค้นหา...' : 'ไม่พบชื่อที่ค้นหา') + '</div>';
     return;
   }
   dd.innerHTML = filtered.map(u => {
@@ -1891,18 +1891,28 @@ function onLoginSearchInput(val) {
   clearTimeout(_loginSearchTimer);
   const q = (val || '').trim();
   if (q.length < 2) return;
+  // พิมพ์ต่อจากคำเดิมและผลเดิมครบแล้ว (ไม่ถึง 5 ชื่อ) → กรองในเครื่องได้ทันที ไม่ต้องรอเซิร์ฟเวอร์
+  const c = _loginSearchCache;
+  if (c && c.complete && q.toLowerCase().startsWith(c.q.toLowerCase())) {
+    populateUsers(c.list.filter(u => String(u.name || '').toLowerCase().includes(q.toLowerCase())));
+    renderUserDropdown(q);
+    return;
+  }
+  _loginSearching = true; renderUserDropdown(q);
   _loginSearchTimer = setTimeout(() => {   // ค้นจากเซิร์ฟเวอร์ (สูงสุด 5 ชื่อ) แทนการโหลดรายชื่อทั้งหมด
     callGAS('searchLoginUsers', [q], res => {
       if (document.getElementById('loginSearch').value.trim() !== q) return;   // พิมพ์ต่อไปแล้ว ข้ามผลเก่า
+      _loginSearching = false;
       const list = (res && res.users) || [];
+      _loginSearchCache = { q, list, complete: list.length < 5 };
       const have = allData.users || [];
       allData.users = have.filter(u => !list.some(x => x.userId === u.userId)).concat(list);
       populateUsers(list);
       renderUserDropdown(q);
-    }, () => {});
-  }, 250);
+    }, () => { _loginSearching = false; renderUserDropdown(document.getElementById('loginSearch').value); });
+  }, 150);
 }
-let _loginSearchTimer = null;
+let _loginSearchTimer = null, _loginSearching = false, _loginSearchCache = null;
 
 function showUserDropdown() {
   const dd = document.getElementById('loginDropdown');

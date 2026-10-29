@@ -6545,21 +6545,30 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             clearTimeout(_loginSearchTimer);
             const q = String(val || '').trim();
             if (q.length < 2) { populateLoginUsers([], 'hint'); return; }
+            const c = window._lsCache;
+            if (c && c.complete && q.toLowerCase().indexOf(c.q.toLowerCase()) === 0) {   // พิมพ์ต่อจากเดิมและผลครบแล้ว → กรองในเครื่องทันที
+                const l = c.list.filter(u => String(u.name || '').toLowerCase().indexOf(q.toLowerCase()) >= 0);
+                populateLoginUsers(l, l.length ? 'search' : 'none');
+                if (l.length === 1) document.getElementById('loginUid').value = l[0].userId;
+                return;
+            }
+            populateLoginUsers([], 'searching');
             _loginSearchTimer = setTimeout(function() {
                 callGAS('searchLoginUsers', [q], function(res) {
                     const box = document.getElementById('loginSearch');
                     if (!box || box.value.trim() !== q) return;
                     const list = ((res && res.users) || []).filter(u => u.role === 'admin' || u.role === 'user' || u.role === 'staff');
+                    window._lsCache = { q: q, list: list, complete: ((res && res.users) || []).length < 5 };
                     allData.users = list;
                     populateLoginUsers(list, list.length ? 'search' : 'none');
                     if (list.length === 1) document.getElementById('loginUid').value = list[0].userId;
                 }, function() {});
-            }, 300);
+            }, 150);
         }
         function populateLoginUsers(users, mode) {
-            if (mode === 'hint' || mode === 'none' || ((!users || users.length === 0) && (window.GAS_URL || (typeof google !== 'undefined' && google.script && google.script.run && typeof google.script.run.getInventoryData === 'function')))) {
+            if (mode === 'hint' || mode === 'none' || mode === 'searching' || ((!users || users.length === 0) && (window.GAS_URL || (typeof google !== 'undefined' && google.script && google.script.run && typeof google.script.run.getInventoryData === 'function')))) {
                 const sel0 = document.getElementById('loginUid');
-                if (sel0) { sel0.innerHTML = '<option value="" disabled selected>' + (mode === 'none' ? '-- ไม่พบชื่อนี้ --' : '-- พิมพ์ชื่อในช่องด้านบนเพื่อค้นหา --') + '</option>'; sel0.value = ''; }
+                if (sel0) { sel0.innerHTML = '<option value="" disabled selected>' + (mode === 'none' ? '-- ไม่พบชื่อนี้ --' : mode === 'searching' ? '-- กำลังค้นหา... --' : '-- พิมพ์ชื่อในช่องด้านบนเพื่อค้นหา --') + '</option>'; sel0.value = ''; }
                 return;
             }
             if (mode !== 'search' && document.getElementById('sysTotalUserCount')) document.getElementById('sysTotalUserCount').innerText = (users || []).length || 3;
@@ -8906,7 +8915,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
 
         // ===== สรุปสิ้นเดือน: เลือกเดือนได้ → Excel (หลายชีต) / พิมพ์-PDF =====
         // ===== แจ้งเตือนระบบ (แอดมิน) =====
-        const EXPECTED_API_VERSION = 'v98';   // เลขเวอร์ชันของไฟล์ api ที่หน้าเว็บนี้ต้องการ (เปลี่ยนพร้อมกับไฟล์ api)
+        const EXPECTED_API_VERSION = 'v99';   // เลขเวอร์ชันของไฟล์ api ที่หน้าเว็บนี้ต้องการ (เปลี่ยนพร้อมกับไฟล์ api)
         window._apiVersionState = null;       // null=ยังไม่ตรวจ | {ok:true,version} | {ok:false,version|null}
         function _noticeHtml(color, icon, title, text, btn) {
             return `<div class="d-flex align-items-center gap-3 flex-wrap p-3 mb-2" style="border:1px solid ${color}88;background:${color}14;border-radius:14px"><i class="fas ${icon}" style="color:${color};font-size:1.3rem"></i><div class="flex-grow-1" style="min-width:220px"><div class="fw-bold" style="color:#fff">${title}</div><div class="small" style="color:#94a3b8">${text}</div></div>${btn || ''}</div>`;
