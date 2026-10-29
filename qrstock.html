@@ -838,10 +838,13 @@ body{display:flex;flex-direction:column}
         <div class="reg-label">แผนก / ตำแหน่ง</div>
         <input class="reg-input" id="regDept" placeholder="เช่น ช่างซ่อมบำรุง, ฝ่ายผลิต" type="text" autocomplete="off">
       </div>
-      <div style="font-size:11.5px;color:var(--text2);margin:2px 0 10px;line-height:1.5">การสมัครถือว่ารับทราบ <a onclick="openPrivacy()" style="color:var(--amber);cursor:pointer;text-decoration:underline">นโยบายข้อมูลส่วนบุคคล</a> (เก็บชื่อ แผนก PIN และประวัติการทำรายการเพื่อใช้ในระบบคลังเท่านั้น)</div>
+      <label id="regConsentBox" style="display:flex;gap:10px;align-items:flex-start;margin:4px 0 12px;padding:11px 12px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;cursor:pointer;transition:all .15s">
+        <input type="checkbox" id="regConsent" onchange="onRegConsentChange()" style="width:20px;height:20px;margin-top:1px;accent-color:#e8a020;flex-shrink:0;cursor:pointer">
+        <span style="font-size:12.5px;line-height:1.55;color:var(--text)">ฉันได้อ่านและยอมรับ <a onclick="event.preventDefault();event.stopPropagation();openPrivacy()" style="color:var(--amber);cursor:pointer;text-decoration:underline;font-weight:700">นโยบายข้อมูลส่วนบุคคล</a> (ระบบเก็บชื่อ แผนก PIN และประวัติการทำรายการ เพื่อใช้ในระบบคลังเท่านั้น)</span>
+      </label>
       <div class="reg-btn-row">
         <button class="reg-cancel-btn" onclick="closeRegister()">ยกเลิก</button>
-        <button class="reg-submit-btn" onclick="goRegStep2()">ถัดไป →</button>
+        <button class="reg-submit-btn" id="regNextBtn" onclick="goRegStep2()" disabled style="opacity:.45;cursor:not-allowed">ถัดไป →</button>
       </div>
     </div>
     <div class="reg-step" id="regStep2">
@@ -4605,8 +4608,15 @@ let regPin = '';
 let regUserId = null;
 let regPollTimer = null;
 
+function onRegConsentChange() {
+  const ok = document.getElementById('regConsent').checked;
+  const b = document.getElementById('regNextBtn');
+  b.disabled = !ok; b.style.opacity = ok ? '1' : '.45'; b.style.cursor = ok ? 'pointer' : 'not-allowed';
+  document.getElementById('regConsentBox').style.borderColor = ok ? 'var(--amber)' : 'var(--border2)';
+}
 function openRegister() {
   regPin = '';
+  document.getElementById('regConsent').checked = false; onRegConsentChange();
   document.getElementById('regName').value = '';
   document.getElementById('regDept').value = '';
   document.getElementById('regError').style.display = 'none';
@@ -4673,6 +4683,7 @@ function showRegRejected() {
 function goRegStep2() {
   const name = document.getElementById('regName').value.trim();
   const err  = document.getElementById('regError');
+  if (!document.getElementById('regConsent').checked) { err.textContent = 'กรุณาอ่านและยอมรับนโยบายข้อมูลส่วนบุคคลก่อนสมัคร'; err.style.display = 'block'; return; }
   if (!name) { err.textContent = 'กรุณากรอกชื่อ-นามสกุล'; err.style.display = 'block'; return; }
   err.style.display = 'none'; regPin = '';
   updateRegPinDots();
