@@ -4723,7 +4723,7 @@ function submitRegister() {
   if (!name || pin.length < PIN_LEN) return;
   const btn = document.getElementById('regSubmitBtn');
   btn.disabled = true; btn.textContent = 'กำลังส่ง...';
-  callGAS('webRegisterUser', [{ name, dept, pin }], res => {
+  callGAS('webRegisterUser', [{ name, dept, pin, consent: true, consentVersion: 'pdpa-2569-10-28' }], res => {
     btn.textContent = 'ส่งคำขอสมัคร';
     if (res && res.success === false) {
       err.textContent = res.error || 'เกิดข้อผิดพลาด'; err.style.display = 'block'; btn.disabled = false; return;
