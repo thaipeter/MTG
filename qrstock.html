@@ -838,9 +838,10 @@ body{display:flex;flex-direction:column}
         <div class="reg-label">แผนก / ตำแหน่ง</div>
         <input class="reg-input" id="regDept" placeholder="เช่น ช่างซ่อมบำรุง, ฝ่ายผลิต" type="text" autocomplete="off">
       </div>
-      <label id="regConsentBox" style="display:flex;gap:10px;align-items:flex-start;margin:4px 0 12px;padding:11px 12px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;cursor:pointer;transition:all .15s">
-        <input type="checkbox" id="regConsent" onchange="onRegConsentChange()" style="width:20px;height:20px;margin-top:1px;accent-color:#e8a020;flex-shrink:0;cursor:pointer">
-        <span style="font-size:12.5px;line-height:1.55;color:var(--text)">ฉันได้อ่านและยอมรับ <a onclick="event.preventDefault();event.stopPropagation();openPrivacy()" style="color:var(--amber);cursor:pointer;text-decoration:underline;font-weight:700">นโยบายข้อมูลส่วนบุคคล</a> (ระบบเก็บชื่อ แผนก PIN และประวัติการทำรายการ เพื่อใช้ในระบบคลังเท่านั้น)</span>
+      <label id="regConsentBox" onclick="if(!_privacyRead){event.preventDefault();openPrivacy(true);}" style="display:flex;gap:10px;align-items:flex-start;margin:4px 0 12px;padding:11px 12px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;cursor:pointer;transition:all .15s">
+        <input type="checkbox" id="regConsent" onchange="onRegConsentChange()" disabled style="width:20px;height:20px;margin-top:1px;accent-color:#e8a020;flex-shrink:0">
+        <span style="font-size:12.5px;line-height:1.55;color:var(--text)">ฉันได้อ่านและยอมรับ <a onclick="event.preventDefault();event.stopPropagation();openPrivacy(true)" style="color:var(--amber);cursor:pointer;text-decoration:underline;font-weight:700">นโยบายข้อมูลส่วนบุคคล</a> (ระบบเก็บชื่อ แผนก PIN และประวัติการทำรายการ เพื่อใช้ในระบบคลังเท่านั้น)
+          <span id="regConsentHint" style="display:block;margin-top:4px;color:var(--amber);font-weight:700"><i class="fas fa-hand-pointer"></i> แตะเพื่ออ่านนโยบายให้จบก่อน แล้วจึงติ๊กได้</span></span>
       </label>
       <div class="reg-btn-row">
         <button class="reg-cancel-btn" onclick="closeRegister()">ยกเลิก</button>
@@ -2210,8 +2211,27 @@ function openChangePin() {
   showCpStep(1);
   document.getElementById('changePinModal').classList.add('open');
 }
-function openPrivacy() { document.getElementById('privacyModal').classList.add('open'); }
-function closePrivacy() { document.getElementById('privacyModal').classList.remove('open'); }
+let _privacyFromReg = false, _privacyRead = false;
+function _privacyCheckBottom() {
+  const bx = document.getElementById('privacyBox'), ok = document.getElementById('privacyOkBtn'), hint = document.getElementById('privacyScrollHint');
+  const atBottom = bx.scrollTop + bx.clientHeight >= bx.scrollHeight - 10;
+  if (_privacyFromReg) { ok.disabled = !atBottom; ok.style.opacity = atBottom ? '1' : '.45'; ok.style.cursor = atBottom ? 'pointer' : 'not-allowed'; hint.style.display = atBottom ? 'none' : 'block'; }
+}
+// fromReg=true: เปิดจากหน้าสมัคร → ต้องเลื่อนอ่านถึงท้ายแล้วกด "รับทราบ" ก่อน ถึงจะติ๊กยอมรับได้
+function openPrivacy(fromReg) {
+  _privacyFromReg = fromReg === true;
+  const bx = document.getElementById('privacyBox'), ok = document.getElementById('privacyOkBtn'), hint = document.getElementById('privacyScrollHint');
+  document.getElementById('privacyModal').classList.add('open');
+  bx.scrollTop = 0;
+  if (!_privacyFromReg) { ok.disabled = false; ok.style.opacity = '1'; ok.style.cursor = 'pointer'; hint.style.display = 'none'; }
+  else { ok.disabled = true; ok.style.opacity = '.45'; ok.style.cursor = 'not-allowed'; hint.style.display = 'block'; }
+  bx.onscroll = _privacyCheckBottom;
+  setTimeout(_privacyCheckBottom, 50);   // จอสูงจนไม่ต้องเลื่อน → ปลดล็อกปุ่มทันที
+}
+function closePrivacy(acknowledged) {
+  document.getElementById('privacyModal').classList.remove('open');
+  if (acknowledged === true && _privacyFromReg) { _privacyRead = true; onRegConsentChange(); }
+}
 function closeChangePin() { document.getElementById('changePinModal').classList.remove('open'); cpOldPin = ''; cpNewPin = ''; }
 function showCpStep(n) { [1,2,3].forEach(i => document.getElementById('cpStep'+i).classList.toggle('active', i===n)); }
 
@@ -4609,14 +4629,18 @@ let regUserId = null;
 let regPollTimer = null;
 
 function onRegConsentChange() {
-  const ok = document.getElementById('regConsent').checked;
+  const cb = document.getElementById('regConsent');
+  cb.disabled = !_privacyRead; cb.style.cursor = _privacyRead ? 'pointer' : 'not-allowed';
+  if (!_privacyRead) cb.checked = false;
+  const rh = document.getElementById('regConsentHint'); if (rh) rh.style.display = _privacyRead ? 'none' : 'block';
+  const ok = cb.checked;
   const b = document.getElementById('regNextBtn');
   b.disabled = !ok; b.style.opacity = ok ? '1' : '.45'; b.style.cursor = ok ? 'pointer' : 'not-allowed';
   document.getElementById('regConsentBox').style.borderColor = ok ? 'var(--amber)' : 'var(--border2)';
 }
 function openRegister() {
   regPin = '';
-  document.getElementById('regConsent').checked = false; onRegConsentChange();
+  _privacyRead = false; document.getElementById('regConsent').checked = false; onRegConsentChange();
   document.getElementById('regName').value = '';
   document.getElementById('regDept').value = '';
   document.getElementById('regError').style.display = 'none';
@@ -5860,8 +5884,8 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 <!-- ════ PRIVACY NOTICE (PDPA) ════ -->
-<div class="modal-overlay" id="privacyModal" onclick="if(event.target===this)closePrivacy()" style="z-index:1200">
-  <div class="modal-box" style="max-height:88vh;overflow-y:auto">
+<div class="modal-overlay" id="privacyModal" onclick="if(event.target===this)closePrivacy(false)" style="z-index:1200">
+  <div class="modal-box" id="privacyBox" style="max-height:88vh;overflow-y:auto">
     <div class="modal-handle"></div>
     <div class="modal-title">🛡️ นโยบายข้อมูลส่วนบุคคล</div>
     <div class="modal-sub">ตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)</div>
@@ -5888,7 +5912,8 @@ if ('serviceWorker' in navigator) {
       <p style="margin:0">สอบถามหรือใช้สิทธิ์ได้ที่ผู้ดูแลระบบคลังอะไหล่ของท่าน การสมัครใช้งานและการใช้ระบบต่อไปถือว่ารับทราบนโยบายนี้</p>
       <p style="margin:12px 0 0;font-size:11.5px;color:var(--text2)">ปรับปรุงล่าสุด 28 ตุลาคม 2569</p>
     </div>
-    <div class="reg-btn-row" style="margin-top:16px"><button class="reg-submit-btn" onclick="closePrivacy()" style="width:100%">รับทราบ</button></div>
+    <div id="privacyScrollHint" style="display:none;margin-top:14px;text-align:center;font-size:12.5px;color:var(--amber);font-weight:700"><i class="fas fa-arrow-down"></i> เลื่อนอ่านให้ถึงด้านล่างสุด แล้วกด "รับทราบ"</div>
+    <div class="reg-btn-row" style="margin-top:10px"><button class="reg-submit-btn" id="privacyOkBtn" onclick="closePrivacy(true)" style="width:100%">รับทราบ</button></div>
   </div>
 </div>
 
