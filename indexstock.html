@@ -317,13 +317,13 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
   --font-headers:'Sarabun','Outfit',sans-serif;
 }
         /* ===== โหมดสว่าง (Dark Mode ปิด) — กลับสีทั้งหน้า แล้วกลับสีรูป/QR คืนให้ถูกต้อง ===== */
-        html.lt{filter:invert(1) hue-rotate(180deg);color-scheme:light;background:#fff}
+        html.lt{filter:invert(1) hue-rotate(180deg) saturate(.72) contrast(.93);color-scheme:light;background:#fff}
         .nav-theme-btn{display:inline-flex;align-items:center;justify-content:center;min-width:38px}
         .nav-theme-btn .ti-moon{display:none}
         html.lt .nav-theme-btn .ti-sun{display:none}
         html.lt .nav-theme-btn .ti-moon{display:block}
         html.lt img,html.lt video,html.lt picture,html.lt svg image,html.lt .no-invert,html.lt [style*="url("],
-        html.lt [id*="qr" i] canvas,html.lt [id*="qr" i] img,html.lt .qr-box canvas,html.lt .qr-box img{filter:invert(1) hue-rotate(180deg)}
+        html.lt [id*="qr" i] canvas,html.lt [id*="qr" i] img,html.lt .qr-box canvas,html.lt .qr-box img{filter:invert(1) hue-rotate(180deg) saturate(1.39) contrast(1.075)}
         *{box-sizing:border-box}
         *:focus{outline:none}
         button,a,.btn{-webkit-tap-highlight-color:transparent}
