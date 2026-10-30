@@ -11602,8 +11602,14 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                 const masterCatNames = String((allData.settings || {}).categories || '')
                     .split(',').map(s => (s.includes(':') ? s.split(':')[0] : s).trim())
                     .filter(s => s && s !== 'undefined');
+                // หมวดในรายการ Master ไม่แยกประเภท → เมื่อเลือกประเภทแล้ว ไม่แสดงหมวดที่ถูกใช้อยู่ฝั่งประเภทอื่นเท่านั้น
+                // (เช่น เลือก "เครื่องมือ" แล้วไม่ควรเห็นหมวดของอะไหล่) ส่วนหมวดใหม่ที่ยังไม่มีรายการเลยยังแสดงให้เลือกได้
+                const _isTool = (type === 'tools' || type === 'tool'), _isItem = (type === 'items' || type === 'item');
+                const usedOther = new Set(((_isTool ? allData.items : _isItem ? allData.tools : []) || []).map(it => getItemCategory(it)));
+                const usedThis = new Set((list || []).map(it => getItemCategory(it)));
+                const masterForType = (_isTool || _isItem) ? masterCatNames.filter(n => usedThis.has(n) || !usedOther.has(n)) : masterCatNames;
                 const uniqueCats = [...new Set(
-                    (list || []).map(item => getItemCategory(item)).concat(masterCatNames)
+                    (list || []).map(item => getItemCategory(item)).concat(masterForType)
                 )]
                     .filter(c => c && c !== 'undefined' && String(c).trim() !== '')
                     .sort();
