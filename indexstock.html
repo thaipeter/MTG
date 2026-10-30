@@ -99,7 +99,12 @@
 .rh-pill b{color:#fff;margin-left:2px}.rh-pill:hover{border-color:#64748b}.rh-pill.active{background:#fbbf24;border-color:#fbbf24;color:#111;font-weight:700}.rh-pill.active b,.rh-pill.active i{color:#111!important}
 .rh-chip{display:inline-block;background:#232838;border:1px solid #2a2f3d;color:#cbd5e1;border-radius:6px;padding:0 7px;font-size:11.5px;margin:0 4px 3px 0}
 .rh-chip em{font-style:normal;color:#8b94a7;margin-right:3px}
-/* ===== แดชบอร์ด bento + แถบ "ต้องจัดการวันนี้" (ต.ค. 69) ===== */
+/* ===== แสงตามเมาส์ (นุ่ม ลื่น) ===== */
+:root{--mouse-x:50vw;--mouse-y:50vh}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:radial-gradient(700px circle at var(--mouse-x) var(--mouse-y),rgba(167,139,250,.10),transparent 75%)}
+@media (hover:none),(prefers-reduced-motion:reduce){body::before{display:none}}
+/* ===== แดชบอร์ด bento + แถบ "รอคุณตัดสินใจ" (ต.ค. 69) ===== */
 .dash-act{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;margin-bottom:14px}
 .dash-act-lead{display:flex;flex-direction:column;justify-content:center;padding:0 14px 0 2px;min-width:120px}
 .dash-act-lead b{color:#fff;font-size:1.05rem}.dash-act-lead span{color:#94a3b8;font-size:.8rem}
@@ -2609,14 +2614,13 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         <button class="btn btn-outline-light btn-sm" onclick="openMonthEndReport()">สรุปสิ้นเดือน</button>
                         <button class="btn btn-link btn-sm text-secondary" onclick="snoozeBackupReminder()">เตือนพรุ่งนี้</button>
                     </div>
-                    <!-- ต้องจัดการวันนี้ -->
-                    <div class="dash-act" id="dashActionStrip" aria-label="ต้องจัดการวันนี้">
-                        <div class="dash-act-lead"><b>ต้องจัดการ</b><span>กดเพื่อไปทำต่อ</span></div>
-                        <button type="button" class="dash-chip" data-k="low" onclick="showLowStock()"><span class="n">0</span><span class="t">อะไหล่ต่ำกว่าเกณฑ์<br>ต้องสั่งเติม</span></button>
-                        <button type="button" class="dash-chip" data-k="po" onclick="goToPO()"><span class="n">0</span><span class="t">ใบสั่งซื้อ<br>ค้างส่ง</span></button>
-                        <button type="button" class="dash-chip" data-k="borrow" onclick="goTo('borrowedItems')"><span class="n">0</span><span class="t">เครื่องมือ<br>ถูกยืมออก</span></button>
-                        <button type="button" class="dash-chip" data-k="slip" onclick="if(currentUserProfile&&currentUserProfile.role==='admin')goTo('replacementSlip')"><span class="n">0</span><span class="t">ค้างคืน<br>จากใบแทน</span></button>
-                        <div class="dash-act-ok d-none" id="dashActionOk"><i class="fas fa-circle-check me-1"></i> วันนี้ไม่มีอะไรค้างต้องจัดการ</div>
+                    <!-- รอดำเนินการ (เฉพาะแอดมิน) — เรื่องที่ยังไม่มีการ์ดอื่นบนแดชบอร์ดแสดง -->
+                    <div class="dash-act d-none" id="dashActionStrip" aria-label="รอดำเนินการ">
+                        <div class="dash-act-lead"><b>รอคุณตัดสินใจ</b><span>กดเพื่อไปทำต่อ</span></div>
+                        <button type="button" class="dash-chip" data-k="req" onclick="goTo('pendingApprovals')"><span class="n">0</span><span class="t">คำขอเบิก / ยืม<br>รออนุมัติ</span></button>
+                        <button type="button" class="dash-chip" data-k="usr" onclick="dashGoPendingUsers()"><span class="n">0</span><span class="t">ผู้สมัครใหม่<br>รออนุมัติ</span></button>
+                        <button type="button" class="dash-chip" data-k="mark" onclick="goTo('takenMarks')"><span class="n">0</span><span class="t">หยิบไปก่อน<br>ยังไม่ได้เบิก</span></button>
+                        <div class="dash-act-ok d-none" id="dashActionOk"><i class="fas fa-circle-check me-1"></i> ตอนนี้ไม่มีคำขอหรือรายการที่รอคุณดำเนินการ</div>
                     </div>
                     <!-- Statistics Cards with Sparklines -->
                     <div class="row g-2 mb-4" id="dashStatGrid">
@@ -9956,19 +9960,32 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
         }
 
 
-        // ===== แถบ "ต้องจัดการ" — อ่านตัวเลขจากการ์ดที่มีอยู่แล้ว ไม่ต้องเรียก API เพิ่ม =====
+        // ===== แถบ "รอคุณตัดสินใจ" (แอดมิน) — อ่านตัวเลขที่ระบบ poll ไว้แล้ว (คำขอ/ผู้สมัครทุก 15 วิ) + นับ "หยิบไปก่อน" ทุก 60 วิ =====
+        window._dashMarkOpen = 0;
+        function dashGoPendingUsers() {
+            goTo('pendingApprovals');
+            const tabBtn = document.querySelector('[data-bs-target="#tabApproveUsers"]');
+            if (tabBtn) { if (window.bootstrap && bootstrap.Tab) bootstrap.Tab.getOrCreateInstance(tabBtn).show(); else tabBtn.click(); }
+        }
         (function () {
-            const src = { low: 'metricLowStockCount', po: 'metricPendingPOCount', borrow: 'metricBorrowedCount', slip: 'count-slip-borrowing' };
+            function isAdmin() { return typeof currentUserProfile !== 'undefined' && !!currentUserProfile && currentUserProfile.role === 'admin'; }
+            function pollMarks() {
+                if (!isAdmin() || document.hidden) return;
+                callGAS('webMarkList', [{ userId: currentUserProfile.uid }], function (r) {
+                    if (r && r.success) { window._dashMarkOpen = (r.rows || []).filter(function (m) { return m.status === 'open'; }).length; refresh(); }
+                }, function () {});
+            }
             function refresh() {
                 const strip = document.getElementById('dashActionStrip'); if (!strip) return;
+                if (!isAdmin()) { strip.classList.add('d-none'); return; }
+                strip.classList.remove('d-none');
+                const val = { req: (typeof _pendingReqCount !== 'undefined' ? _pendingReqCount : 0), usr: (typeof _pendingUserCountForBadge !== 'undefined' ? _pendingUserCountForBadge : 0), mark: window._dashMarkOpen };
                 let total = 0;
                 strip.querySelectorAll('.dash-chip').forEach(ch => {
-                    const el = document.getElementById(src[ch.dataset.k]);
-                    const n = el ? (parseInt(String(el.textContent).replace(/[^0-9]/g, ''), 10) || 0) : 0;
+                    const n = Number(val[ch.dataset.k]) || 0;
                     ch.querySelector('.n').textContent = n;
-                    ch.classList.toggle('hot', n > 0 && (ch.dataset.k === 'low' || ch.dataset.k === 'slip'));
-                    ch.classList.toggle('warm', n > 0 && (ch.dataset.k === 'po' || ch.dataset.k === 'borrow'));
-                    if (ch.dataset.k === 'slip' && !(window.currentUserProfile && currentUserProfile.role === 'admin')) ch.classList.add('nolink');
+                    ch.classList.toggle('hot', n > 0 && ch.dataset.k !== 'mark');
+                    ch.classList.toggle('warm', n > 0 && ch.dataset.k === 'mark');
                     total += n;
                 });
                 const ok = document.getElementById('dashActionOk');
@@ -9976,11 +9993,24 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 strip.querySelectorAll('.dash-chip').forEach(c => c.classList.toggle('d-none', total === 0));
                 const lead = strip.querySelector('.dash-act-lead'); if (lead) lead.classList.toggle('d-none', total === 0);
             }
+            window._dashAttnRefresh = refresh;
             document.addEventListener('DOMContentLoaded', function () {
-                const mo = new MutationObserver(refresh);
-                Object.values(src).forEach(id => { const el = document.getElementById(id); if (el) mo.observe(el, { childList: true, characterData: true, subtree: true }); });
-                refresh();
+                setInterval(refresh, 3000); setInterval(pollMarks, 60000);
+                setTimeout(function () { pollMarks(); refresh(); }, 2500);
             });
+        })();
+
+                // แสงตามเมาส์: ตามแบบหน่วงนิดๆ ให้ลื่น และหยุดคำนวณเองเมื่อแสงตามทันแล้ว (ไม่กินเครื่องตอนเมาส์นิ่ง)
+        (function () {
+            if (window.matchMedia && (matchMedia('(hover:none)').matches || matchMedia('(prefers-reduced-motion:reduce)').matches)) return;
+            let tx = innerWidth / 2, ty = innerHeight / 2, cx = tx, cy = ty, raf = 0;
+            const root = document.documentElement, SPEED = 0.14;
+            function step() {
+                cx += (tx - cx) * SPEED; cy += (ty - cy) * SPEED;
+                root.style.setProperty('--mouse-x', cx.toFixed(1) + 'px'); root.style.setProperty('--mouse-y', cy.toFixed(1) + 'px');
+                raf = (Math.abs(tx - cx) > 0.5 || Math.abs(ty - cy) > 0.5) ? requestAnimationFrame(step) : 0;
+            }
+            addEventListener('mousemove', function (e) { tx = e.clientX; ty = e.clientY; if (!raf) raf = requestAnimationFrame(step); }, { passive: true });
         })();
 
         // escape ค่าที่ฝังใน onclick="fn('...')" — กัน ' " \ & < > ทำให้ปุ่มพัง (เช่นชื่อมีเครื่องหมาย " )
@@ -10032,6 +10062,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
         function renderTakenMarks() {
             var q = (document.getElementById('mkSearch').value || '').trim().toLowerCase();
             var open = _marks.filter(function(m){ return m.status === 'open'; }).length;
+            window._dashMarkOpen = open; if (window._dashAttnRefresh) window._dashAttnRefresh();
             var b = document.getElementById('markOpenBadge'); if (b) { b.textContent = open; b.classList.toggle('d-none', !open); }
             var rows = _marks.filter(function(m){
                 if (_markFilter === 'open' && m.status !== 'open') return false;
