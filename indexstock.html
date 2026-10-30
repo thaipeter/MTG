@@ -8944,7 +8944,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
 
         // ===== สรุปสิ้นเดือน: เลือกเดือนได้ → Excel (หลายชีต) / พิมพ์-PDF =====
         // ===== แจ้งเตือนระบบ (แอดมิน) =====
-        const EXPECTED_API_VERSION = 'v100';   // เลขเวอร์ชันของไฟล์ api ที่หน้าเว็บนี้ต้องการ (เปลี่ยนพร้อมกับไฟล์ api)
+        const EXPECTED_API_VERSION = 'v101';   // เลขเวอร์ชันของไฟล์ api ที่หน้าเว็บนี้ต้องการ (เปลี่ยนพร้อมกับไฟล์ api)
         window._apiVersionState = null;       // null=ยังไม่ตรวจ | {ok:true,version} | {ok:false,version|null}
         function _noticeHtml(color, icon, title, text, btn) {
             return `<div class="d-flex align-items-center gap-3 flex-wrap p-3 mb-2" style="border:1px solid ${color}88;background:${color}14;border-radius:14px"><i class="fas ${icon}" style="color:${color};font-size:1.3rem"></i><div class="flex-grow-1" style="min-width:220px"><div class="fw-bold" style="color:#fff">${title}</div><div class="small" style="color:#94a3b8">${text}</div></div>${btn || ''}</div>`;
