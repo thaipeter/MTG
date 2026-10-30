@@ -29,6 +29,17 @@
 #txModal .form-control,#txModal .form-select{background:#0b0d13!important;border:1px solid rgba(255,255,255,.12)!important;color:#fff!important;border-radius:12px;padding:.6rem .85rem}
 #txModal .form-control:focus,#txModal .form-select:focus{border-color:var(--tx-c)!important;box-shadow:0 0 0 3px var(--tx-soft)!important}
 .tx2-filter{display:flex;align-items:center;gap:8px;margin-bottom:8px;color:#94a3b8;font-size:.85rem}
+/* จัดวางใหม่: หมวด+ช่องค้นหาอยู่แถวเดียว / จำนวนอยู่ซ้าย รายละเอียดอยู่ขวา */
+.tx2-pick{display:flex;gap:8px;align-items:stretch}
+.tx2-pick>.form-select{flex:0 0 32%;max-width:230px;min-height:46px}
+.tx2-pick-item{flex:1;min-width:0}
+#txModal .ts-wrapper.form-control{padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+.tx2-cols{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:0 28px;align-items:start}
+.tx2-col-qty,.tx2-col-detail{min-width:0}
+.tx2-cols .tx2-step:first-child{margin-top:1.3rem}
+.tx2-info div{background:transparent}
+.tx2-qty .form-control{min-width:0}
+@media(max-width:767px){.tx2-cols{grid-template-columns:1fr}.tx2-pick{flex-direction:column}.tx2-pick>.form-select{flex:none;max-width:none}}
 .tx2-filter .form-select{flex:1}
 #txModal .ts-control{background:#0b0d13!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:12px;padding:.65rem .85rem;color:#fff!important}
 #txModal .ts-control input,#txModal .ts-control .item{color:#fff!important}
@@ -2340,43 +2351,49 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                         <input type="hidden" id="txType">
 
                         <div class="tx2-step"><span class="tx2-num">1</span> เลือกสินค้า <span class="text-danger">*</span></div>
-                        <div class="tx2-filter">
-                            <i class="fas fa-filter"></i>
-                            <select class="form-select form-select-sm" id="txCategory" onchange="updateTxItemOptions()">
-                                <option value="">-- ไม่กรองหมวดหมู่ (แสดงทั้งหมด) --</option>
+                        <div class="tx2-pick">
+                            <select class="form-select" id="txCategory" onchange="updateTxItemOptions()" title="กรองตามหมวดหมู่">
+                                <option value="">ทุกหมวดหมู่</option>
                             </select>
+                            <div class="tx2-pick-item">
+                                <select id="txItemCode" placeholder="🔍 พิมพ์ค้นหารหัส หรือ ชื่อรายการ..." autocomplete="off" required></select>
+                            </div>
                         </div>
-                        <select id="txItemCode" placeholder="🔍 พิมพ์ค้นหารหัส หรือ ชื่อรายการ..." autocomplete="off" required></select>
                         <div class="tx2-info" id="txInfo" style="display:none;"></div>
 
-                        <div class="tx2-step"><span class="tx2-num">2</span> จำนวน <span class="text-danger">*</span></div>
-                        <div class="tx2-qty">
-                            <button type="button" class="tx2-stepbtn" onclick="txStep(-1)" aria-label="ลดจำนวน"><i class="fas fa-minus"></i></button>
-                            <input type="number" class="form-control" id="txQty" min="1" step="1" placeholder="0" required oninput="updateTxPreview()">
-                            <button type="button" class="tx2-stepbtn" onclick="txStep(1)" aria-label="เพิ่มจำนวน"><i class="fas fa-plus"></i></button>
-                        </div>
-                        <div class="tx2-chips">
-                            <button type="button" onclick="txAdd(1)">+1</button>
-                            <button type="button" onclick="txAdd(5)">+5</button>
-                            <button type="button" onclick="txAdd(10)">+10</button>
-                            <button type="button" onclick="txAdd(50)">+50</button>
-                            <button type="button" id="txAllBtn" onclick="txAll()">ทั้งหมด</button>
-                        </div>
-                        <div class="tx2-preview" id="txPreview" style="display:none;"></div>
-
-                        <div class="tx2-step"><span class="tx2-num">3</span> รายละเอียด</div>
-                        <div class="row g-3">
-                            <div class="col-12 col-sm-6">
-                                <label class="tx2-lbl">วันที่ทำรายการ <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" id="txDate" required>
+                        <div class="tx2-cols">
+                            <div class="tx2-col-qty">
+                                <div class="tx2-step"><span class="tx2-num">2</span> จำนวน <span class="text-danger">*</span></div>
+                                <div class="tx2-qty">
+                                    <button type="button" class="tx2-stepbtn" onclick="txStep(-1)" aria-label="ลดจำนวน"><i class="fas fa-minus"></i></button>
+                                    <input type="number" class="form-control" id="txQty" min="1" step="1" placeholder="0" required oninput="updateTxPreview()">
+                                    <button type="button" class="tx2-stepbtn" onclick="txStep(1)" aria-label="เพิ่มจำนวน"><i class="fas fa-plus"></i></button>
+                                </div>
+                                <div class="tx2-chips">
+                                    <button type="button" onclick="txAdd(1)">+1</button>
+                                    <button type="button" onclick="txAdd(5)">+5</button>
+                                    <button type="button" onclick="txAdd(10)">+10</button>
+                                    <button type="button" onclick="txAdd(50)">+50</button>
+                                    <button type="button" id="txAllBtn" onclick="txAll()">ทั้งหมด</button>
+                                </div>
+                                <div class="tx2-preview" id="txPreview" style="display:none;"></div>
                             </div>
-                            <div class="col-12 col-sm-6">
-                                <label class="tx2-lbl">ผู้ทำรายการ <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="txUser" placeholder="ชื่อพนักงาน" required>
-                            </div>
-                            <div class="col-12">
-                                <label class="tx2-lbl">หมายเหตุ / สถานที่นำไปใช้ <span id="txRemarkReq" class="text-danger d-none">*</span></label>
-                                <input type="text" class="form-control" id="txRemark" placeholder="เช่น ซ่อม Line 1, เติมสต็อก...">
+                            <div class="tx2-col-detail">
+                                <div class="tx2-step"><span class="tx2-num">3</span> รายละเอียด</div>
+                                <div class="row g-3">
+                                    <div class="col-12 col-sm-6">
+                                        <label class="tx2-lbl">วันที่ทำรายการ <span class="text-danger">*</span></label>
+                                        <input type="date" class="form-control" id="txDate" required>
+                                    </div>
+                                    <div class="col-12 col-sm-6">
+                                        <label class="tx2-lbl">ผู้ทำรายการ <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="txUser" placeholder="ชื่อพนักงาน" required>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="tx2-lbl">หมายเหตุ / สถานที่นำไปใช้ <span id="txRemarkReq" class="text-danger d-none">*</span></label>
+                                        <input type="text" class="form-control" id="txRemark" placeholder="เช่น ซ่อม Line 1, เติมสต็อก...">
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </form>
@@ -10545,7 +10562,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             const _inf = document.getElementById('txInfo'); if (_inf) _inf.style.display = 'none'; const _pv = document.getElementById('txPreview'); if (_pv) _pv.style.display = 'none';
             const txUserEl = document.getElementById('txUser'); txUserEl.value = currentUserProfile.name; txUserEl.readOnly = true; txUserEl.classList.add('bg-light');
             const txDateEl = document.getElementById('txDate'); txDateEl.value = new Date().toISOString().slice(0, 10);
-            const catSelect = document.getElementById('txCategory'); catSelect.innerHTML = '<option value="">-- ไม่กรอง (แสดงทั้งหมด) --</option>';
+            const catSelect = document.getElementById('txCategory'); catSelect.innerHTML = '<option value="">ทุกหมวดหมู่</option>';
             const uniqueCats = getCombinedCategories(allData.items.concat(allData.tools));
             uniqueCats.forEach(cat => { let opt = document.createElement('option'); opt.value = cat; opt.text = cat; catSelect.appendChild(opt); });
             catSelect.value = ''; updateTxItemOptions(); txModal.show();
