@@ -7,6 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#12141d">
+<script>try{if(localStorage.getItem('qrLight')==='1')document.documentElement.classList.add('lt');}catch(e){}</script>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="คลังอะไหล่">
@@ -29,6 +30,9 @@
   --tab-h:52px; --bar-h:56px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+/* โหมดสว่าง (ตั้งค่า Dark Mode = ปิด ที่หน้าแดชบอร์ด) — กลับสีทั้งหน้า แล้วกลับสีรูป/กล้อง/QR คืน */
+html.lt{filter:invert(1) hue-rotate(180deg);color-scheme:light;background:#fff}
+html.lt img,html.lt video,html.lt picture,html.lt .no-invert,html.lt [style*="url("],html.lt [id*="qr" i] canvas,html.lt [id*="qr" i] img,html.lt [id*="scan" i] canvas{filter:invert(1) hue-rotate(180deg)}
 html,body{height:100%;margin:0;background:var(--bg);font-family:'Sarabun',sans-serif;color:var(--text);overscroll-behavior:none}
 body{display:flex;flex-direction:column}
 #appWrap{display:none;flex-direction:column;height:100vh;height:100dvh;width:100%;max-width:100%;overflow:hidden;position:relative}
@@ -1677,6 +1681,14 @@ body{display:flex;flex-direction:column}
 <script>
 /* ══ STATE ══ */
 let allData = {};
+// โหมดสว่าง/มืด ตามค่า Dark Mode ที่แอดมินตั้งไว้ (settings.darkMode === false = สว่าง)
+function _qrApplyTheme(st) {
+  if (!st || typeof st.darkMode === 'undefined') return;
+  const light = st.darkMode === false;
+  document.documentElement.classList.toggle('lt', light);
+  try { localStorage.setItem('qrLight', light ? '1' : '0'); } catch (e) {}
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', light ? '#f3f4f6' : '#12141d');
+}
 let me = { uid: null, name: '', role: 'user', photoUrl: null };
 let withdrawCart = [];
 let borrowCart   = [];
@@ -1715,6 +1727,7 @@ window.addEventListener('DOMContentLoaded', () => {
   show('loadingScreen');
   callGAS('getInventoryData', ['public'], data => {   // ก่อนล็อกอินได้เฉพาะรายชื่อ+โลโก้ (ข้อมูลคลังเต็มโหลดหลังล็อกอิน)
     allData = data || {};
+    _qrApplyTheme(allData.settings);
     applyBrandingToLoginScreen(allData.settings || {});
     hide('loadingScreen');
     
@@ -2005,6 +2018,7 @@ function loadFullThenLogin(uid, onFail) {
     if (full && full.authed) {
       const pu = allData.users || [];
       allData = full;
+      _qrApplyTheme(allData.settings);
       let sp = null; try { const ss = JSON.parse(localStorage.getItem('sb_user_session') || 'null'); if (ss && ss.uid === uid) sp = ss.photoUrl || null; } catch (e) {}
       allData.users = (full.users || []).map(u => { const o = pu.find(x => x.userId === u.userId); const ph = (o && o.photoUrl) || (u.userId === uid ? sp : null); return ph ? Object.assign({}, u, { photoUrl: ph }) : u; });
       loginSuccess(uid);

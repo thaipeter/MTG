@@ -277,6 +277,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
 </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0f0f0f">
+    <script>try{var _sb=JSON.parse(localStorage.getItem('sysBranding')||'null');if(_sb&&_sb.darkMode===false)document.documentElement.classList.add('lt');}catch(e){}</script>
     <link rel="manifest" href="manifest-admin.json">
     <link rel="apple-touch-icon" href="apple-touch-icon-admin.png">
     <meta name="mobile-web-app-capable" content="yes">
@@ -315,6 +316,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
   --sidebar-width:0px;--header-height:64px;
   --font-headers:'Sarabun','Outfit',sans-serif;
 }
+        /* ===== โหมดสว่าง (Dark Mode ปิด) — กลับสีทั้งหน้า แล้วกลับสีรูป/QR คืนให้ถูกต้อง ===== */
+        html.lt{filter:invert(1) hue-rotate(180deg);color-scheme:light;background:#fff}
+        html.lt img,html.lt video,html.lt picture,html.lt svg image,html.lt .no-invert,html.lt [style*="url("],
+        html.lt [id*="qr" i] canvas,html.lt [id*="qr" i] img,html.lt .qr-box canvas,html.lt .qr-box img{filter:invert(1) hue-rotate(180deg)}
         *{box-sizing:border-box}
         *:focus{outline:none}
         button,a,.btn{-webkit-tap-highlight-color:transparent}
@@ -18625,6 +18630,14 @@ function showCatalogResult(category, unit) {
     }, true);
     function start() { decorate(); try { new MutationObserver(decorate).observe(document.body, { childList: true, subtree: true }); } catch (e) {} }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+<script>
+/* ซิงก์คลาสโหมดสว่างที่ <html> ให้ตรงกับ body.dark-mode (ที่ตั้งค่า/ตัวอย่างสวิตช์ Dark Mode สลับอยู่) */
+(function(){
+  function sync(){ document.documentElement.classList.toggle('lt', !document.body.classList.contains('dark-mode')); var m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute('content', document.body.classList.contains('dark-mode')?'#0f0f0f':'#f3f4f6'); }
+  new MutationObserver(sync).observe(document.body,{attributes:true,attributeFilter:['class']});
+  sync();
 })();
 </script>
 </body>
