@@ -758,6 +758,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
 .ts-wrapper .ts-dropdown{z-index:9999!important;border-radius:var(--radius-md);box-shadow:var(--shadow-lg);border:1px solid #333;background:#161616;color:#b0b0b0}
 .ts-wrapper.form-control{border-radius:var(--radius-md);padding:.4rem 1rem}
 .ts-control,.ts-control input{background:#141414!important;color:#b0b0b0!important}
+/* ช่องพิมพ์ค้นหาในกล่อง tom-select ต้องโปร่งใสให้เห็นสีพื้นของกล่องเดียวกัน (เดิมเป็นคนละเฉดทำให้เป็นแถบสว่างซ้อนในกล่อง) และตัวอักษร/placeholder อ่านชัด */
+.ts-wrapper .ts-control input,.ts-wrapper.single .ts-control input{background:transparent!important;color:#e5e7eb!important}
+.ts-wrapper .ts-control input::placeholder{color:#8b94a7!important;opacity:1}
+.ts-wrapper .ts-control>.item{color:#e5e7eb!important}
 .ts-dropdown .option:hover,.ts-dropdown .option.active{background:#2a2a2a!important}
         @media (max-width:768px){.page-content{padding:10px}.topnav-brand .brand-sub{display:none}.topnav-menu a span{display:none}.filter-group{flex-direction:column;align-items:stretch}.search-box{min-width:100%}.topnav-menu{gap:0}.topnav-menu a{padding:0 10px;font-size:10px}}
         .text-theme{color:var(--primary-color)!important}body.dark-mode .text-theme{color:var(--accent-color)!important}.border-theme{border-color:var(--primary-color)!important}
