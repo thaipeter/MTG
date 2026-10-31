@@ -9119,7 +9119,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             const el = document.getElementById('backupReminder'); if (!el) return;
             let show = false;
             try {
-                if (window.currentUserProfile && currentUserProfile.role === 'admin') {
+                if (typeof currentUserProfile !== 'undefined' && currentUserProfile && currentUserProfile.role === 'admin') {
                     const n = new Date(Date.now() + 7 * 3600 * 1000);
                     const last = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth() + 1, 0)).getUTCDate();
                     const daysLeft = last - n.getUTCDate();
