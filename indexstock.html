@@ -5582,7 +5582,43 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
         }
         window._gasSilentFail = _gasSilentFail;
 
+            // ★ แก้อาการ "ปล่อยหน้าทิ้งไว้นานแล้วกดปุ่มแรกค้างนาน"
+            // สาเหตุ: ปล่อยหน้าไว้นาน (หรือเครื่องหลับ/เปลี่ยนเน็ต) การเชื่อมต่อเดิมกับเซิร์ฟเวอร์ตายไปแล้ว
+            // แต่เบราว์เซอร์ยังพยายามใช้ต่อ คำสั่งแรกเลยรอจนหมดเวลา 30 วิ แล้วค่อยลองใหม่ถึงจะผ่าน
+            // วิธีแก้: ถ้าเงียบเกิน 90 วิ ให้ยิงคำสั่งเล็กๆ ไป "อุ่นเครื่อง" ก่อน (รอไม่เกิน 5 วิ) แล้วค่อยทำรายการจริง
+            // และอุ่นเครื่องล่วงหน้าตอนกลับมาที่แท็บ/ต่อเน็ตได้ ผู้ใช้จึงแทบไม่เจอการค้าง
+            // (ไม่ลดเวลารอของคำสั่งบันทึกข้อมูล เพื่อไม่ให้ยิงซ้ำจนรายการซ้ำ)
+            var _lastGasOk = Date.now();
+            var _warmP = null;
+            function _gasWarmUp() {
+                if (_warmP) return _warmP;
+                _warmP = new Promise(function (resolve) {
+                    var c = new AbortController();
+                    var t = setTimeout(function () { c.abort(); }, 5000);
+                    var done = function () { clearTimeout(t); _lastGasOk = Date.now(); _warmP = null; resolve(); };
+                    try {
+                        fetch(window.GAS_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain' },
+                            body: JSON.stringify({ fn: 'webGetApiVersion', args: [], token: getSessionToken(), requestId: '' }),
+                            signal: c.signal
+                        }).then(function (r) { return r.text(); }).then(done, done);
+                    } catch (e) { done(); }
+                });
+                return _warmP;
+            }
+            function _gasWarmIfIdle() {
+                if (window.GAS_URL && document.visibilityState !== 'hidden' && (Date.now() - _lastGasOk) > 60000) _gasWarmUp();
+            }
+            document.addEventListener('visibilitychange', _gasWarmIfIdle);
+            window.addEventListener('focus', _gasWarmIfIdle);
+            window.addEventListener('online', function () { if (window.GAS_URL) _gasWarmUp(); });
+
             function callGAS(fn, args, onOk, onFail, timeoutMs, _attempt, _requestId) {
+                if (!_attempt && window.GAS_URL && (Date.now() - _lastGasOk) > 90000) {
+                    _gasWarmUp().then(function () { callGAS(fn, args, onOk, onFail, timeoutMs, 1, _requestId); });
+                    return;
+                }
                 _attempt = _attempt || 1;
                 // ★ requestId: สุ่มขึ้นครั้งเดียวตอนเริ่มคำสั่งนี้ (ไม่สุ่มใหม่ทุก retry) แล้วส่งไปกับทุกครั้งที่ยิงซ้ำ
                 // backend จะใช้ค่านี้จำผลลัพธ์ไว้ (ดู "IDEMPOTENCY GUARD" ใน doPost ฝั่ง .gs) ถ้า requestId เดิม
@@ -5621,7 +5657,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     // "signal is aborted without reason" ซึ่งไม่สื่อความหมายอะไรเลย — เพิ่มพารามิเตอร์ timeoutMs ให้
                     // เรียกแบบ custom ได้ต่อจุด (ค่าเริ่มต้นยังเป็น 30 วิเหมือนเดิมสำหรับฟังก์ชันทั่วไป) และใส่เหตุผลที่
                     // อ่านรู้เรื่องให้ abort() เผื่อยังหลุด timeout อยู่ดี
-                    const effectiveTimeout = timeoutMs || 30000;
+                    // คำสั่ง "อ่านข้อมูล" ลองซ้ำได้ปลอดภัย จึงรอแค่ 15 วิแล้วลองใหม่ (คำสั่งบันทึกยังรอ 30 วิเหมือนเดิม)
+                    const effectiveTimeout = timeoutMs || (isReadOnly ? 15000 : 30000);
                     const timer = setTimeout(() => controller.abort('เซิร์ฟเวอร์ตอบกลับช้ากว่าปกติ (อาจกำลังประมวลผลอยู่) กรุณาลองใหม่อีกครั้ง'), effectiveTimeout);
                     fetch(window.GAS_URL, {
                         method: 'POST',
@@ -5636,6 +5673,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     .then(r => r.json())
                     .then(res => {
                         clearTimeout(timer);
+                        _lastGasOk = Date.now();
                         if (res && res.success === false) {
                             // ★ เพิ่ม: เจอ session หมดอายุจาก backend (sessionExpired: true) ให้เด้งกลับหน้า login
                             // ทันทีทุกจุดในระบบโดยอัตโนมัติ แทนที่จะโชว์แค่ popup error แล้วผู้ใช้งงว่าต้องทำอะไรต่อ
