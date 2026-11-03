@@ -15414,6 +15414,16 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
         })();
 
         // ส่ง audit ไป Google Sheet (fire-and-forget ไม่บล็อก UI)
+        // ★ แปลงสถานะของ Audit Log เป็นป้ายที่แสดง — เดิมถือว่า "ไม่ใช่ SUCCESS เป๊ะๆ = ล้มเหลว"
+        // ทั้งที่ฝั่งหลังบ้านบันทึกสถานะว่าง (เบิก/อนุมัติ/ปิดเดือน ฯลฯ) หรือ OK (PDPA) ได้ → รายการที่สำเร็จถูกป้ายแดงว่า "ล้มเหลว"
+        // กติกาใหม่: ล้มเหลวเฉพาะเมื่อสถานะ/ชนิดบอกว่าล้มเหลวจริง, WARNING = เตือน, นอกนั้นถือว่าสำเร็จ
+        function _auditStatusView(log) {
+            const st = String((log && log.status) || '').trim().toUpperCase();
+            const ty = String((log && log.type) || '').toUpperCase();
+            if (/^(FAIL|FAILED|ERROR|DENIED|REJECTED|BLOCKED)$/.test(st) || /(^|_)(FAIL|FAILED|ERROR)($|_)/.test(ty)) return { kind: 'fail', color: '#ef4444', bg: '#3a1e1e', label: 'ล้มเหลว' };
+            if (st === 'WARNING' || st === 'WARN') return { kind: 'warn', color: '#f59e0b', bg: '#3a2f1e', label: 'เตือน' };
+            return { kind: 'ok', color: '#22c55e', bg: '#1e3a2f', label: 'สำเร็จ' };
+        }
         function writeAudit(type, detail, status = 'SUCCESS') {
             try {
                 const payload = {
@@ -15508,10 +15518,11 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             }
             logs.forEach(log => {
                 const meta = AUDIT_TYPE_META[log.type] || { label: log.type, badge: 'bg-secondary bg-opacity-10 text-secondary', icon: 'fa-circle' };
-                const isSuccess = log.status === 'SUCCESS';
-                const statusColor = isSuccess ? '#22c55e' : '#ef4444';
-                const statusBg = isSuccess ? '#1e3a2f' : '#3a1e1e';
-                const statusLabel = isSuccess ? 'สำเร็จ' : 'ล้มเหลว';
+                const _sv = _auditStatusView(log);
+                const isSuccess = _sv.kind === 'ok';
+                const statusColor = _sv.color;
+                const statusBg = _sv.bg;
+                const statusLabel = _sv.label;
                 // ★ แก้บั๊ก: เดิมเช็คแบบ binary (role==='admin' ? Admin : User) ทำให้ role อื่นๆ ที่ไม่ใช่ "admin"
                 // เป๊ะๆ (เช่น "system" ของบอท LINE, "qr", "pending", "rejected", "staff", "-") ถูกจัดเป็น User
                 // ผิดหมด ทั้งที่บางรายการไม่ใช่การกระทำของ user เลย (เช่นบอทส่งข้อความไม่สำเร็จ)
@@ -15718,10 +15729,11 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             }
             logs.forEach(log => {
                 const meta = AUDIT_TYPE_META[log.type] || { label: log.type, badge: 'bg-secondary bg-opacity-10 text-secondary', icon: 'fa-circle' };
-                const isSuccess = log.status === 'SUCCESS';
-                const statusColor = isSuccess ? '#22c55e' : '#ef4444';
-                const statusBg = isSuccess ? '#1e3a2f' : '#3a1e1e';
-                const statusLabel = isSuccess ? 'สำเร็จ' : 'ล้มเหลว';
+                const _sv = _auditStatusView(log);
+                const isSuccess = _sv.kind === 'ok';
+                const statusColor = _sv.color;
+                const statusBg = _sv.bg;
+                const statusLabel = _sv.label;
                 const card = document.createElement('div');
                 card.className = 'p-3 rounded-3 shadow-sm';
                 card.style.cssText = 'background:#1a1a1a;border:1px solid #2a2a2a';
