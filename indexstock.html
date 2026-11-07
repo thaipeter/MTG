@@ -1719,9 +1719,14 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             var s = Math.round((Date.now() - t0) / 1000);
             if (s >= 10) {
                 note.style.display = 'block';
-                note.textContent = s < 40
-                    ? 'เซิร์ฟเวอร์ตอบช้ากว่าปกติ กำลังรอ/ลองใหม่ให้อัตโนมัติ (รอมา ' + s + ' วิ) กรุณาอย่าเพิ่งกดซ้ำ'
-                    : 'รอมา ' + s + ' วิแล้ว ถ้ายังไม่ขึ้น ให้รีหน้า (Ctrl+F5) แล้วเช็กรายการว่าบันทึกไปแล้วหรือยัง ก่อนทำซ้ำ';
+                var where = (window._gasInflight > 0)
+                    ? 'กำลังรอเซิร์ฟเวอร์: ' + (window._gasCurFn || '?')
+                    : 'เซิร์ฟเวอร์ตอบแล้ว เครื่องนี้กำลังประมวลผลหน้าจอ';
+                var lg = (window._gasLog || []).slice(-3).map(function (x) { return x.fn + ' ' + (x.ms / 1000).toFixed(1) + 's' + (x.ok ? '' : ' ✗'); }).join(' · ');
+                note.innerHTML = (s < 40
+                    ? 'ช้ากว่าปกติ กำลังรอ/ลองใหม่ให้อัตโนมัติ (รอมา ' + s + ' วิ) กรุณาอย่าเพิ่งกดซ้ำ'
+                    : 'รอมา ' + s + ' วิแล้ว ถ้ายังไม่ขึ้น ให้รีหน้า (Ctrl+F5) แล้วเช็กรายการว่าบันทึกไปแล้วหรือยัง ก่อนทำซ้ำ')
+                    + '<div style="margin-top:6px;font-size:.78rem;opacity:.75">' + where + (lg ? '<br>ล่าสุด: ' + lg : '') + '</div>';
             }
         }
         function sync() {
@@ -5688,6 +5693,14 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     // คำสั่ง "อ่านข้อมูล" ลองซ้ำได้ปลอดภัย จึงรอแค่ 15 วิแล้วลองใหม่ (คำสั่งบันทึกยังรอ 30 วิเหมือนเดิม)
                     const effectiveTimeout = timeoutMs || (isReadOnly ? 15000 : 30000);
                     const timer = setTimeout(() => controller.abort('เซิร์ฟเวอร์ตอบกลับช้ากว่าปกติ (อาจกำลังประมวลผลอยู่) กรุณาลองใหม่อีกครั้ง'), effectiveTimeout);
+                    // ★ จับเวลาแต่ละคำสั่ง เพื่อบอกได้ว่าช้าที่เซิร์ฟเวอร์หรือที่เครื่อง (ดูข้อความใต้โลโก้ตอนโหลดค้าง)
+                    const _tq = Date.now(); window._gasInflight = (window._gasInflight || 0) + 1; window._gasCurFn = fn;
+                    const _tEnd = function (ok) {
+                        window._gasInflight = Math.max(0, (window._gasInflight || 1) - 1);
+                        const ms = Date.now() - _tq;
+                        (window._gasLog = window._gasLog || []).push({ fn: fn, ms: ms, ok: ok, n: _attempt }); if (window._gasLog.length > 8) window._gasLog.shift();
+                        if (ms > 5000) console.warn('[slow-call] ' + fn + ' ใช้ ' + (ms / 1000).toFixed(1) + ' วิ (ครั้งที่ ' + _attempt + ')');
+                    };
                     fetch(window.GAS_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'text/plain' },
@@ -5701,6 +5714,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     .then(r => r.json())
                     .then(res => {
                         clearTimeout(timer);
+                        _tEnd(true);
                         _lastGasOk = Date.now();
                         if (res && res.success === false) {
                             // ★ เพิ่ม: เจอ session หมดอายุจาก backend (sessionExpired: true) ให้เด้งกลับหน้า login
@@ -5715,13 +5729,15 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                                 }
                                 return;
                             }
-                            if (onFail) onFail(res.error || 'error');
+                            try { if (onFail) onFail(res.error || 'error'); } catch (he) { console.error('handler error', he); }
                             return;
                         }
-                        if (onOk) onOk(res);
+                        // ★ เดิม ถ้าโค้ดที่แสดงผลหลังรับข้อมูลเกิดข้อผิดพลาด จะถูกนับเป็น "การเชื่อมต่อล้มเหลว" แล้วยิงคำสั่งซ้ำอีก 2 รอบ
+                        try { if (onOk) onOk(res); } catch (he) { console.error('handler error', he); }
                     })
                     .catch(e => {
                         clearTimeout(timer);
+                        if (!e || !e._ended) { try { _tEnd(false); } catch (x) {} }
                         if (_attempt < MAX_ATTEMPTS) {
                             // ปัญหาการเชื่อมต่อ/รับผลลัพธ์ล้มเหลว (ไม่ใช่ server ปฏิเสธคำขอ) — ลองใหม่หลังหน่วงสั้นๆ
                             // ส่ง requestId เดิมไปด้วยเสมอ (ไม่ใช่ requestId ใหม่) เพื่อให้ idempotency guard ทำงานถูก
