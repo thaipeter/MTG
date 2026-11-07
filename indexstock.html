@@ -10647,7 +10647,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             if (searchEl) searchEl.value = itemCode;
             if (startDateEl) startDateEl.value = '';
             if (endDateEl) endDateEl.value = '';
-            rcpSelectedKeys = new Set();
+            rcpSelectedKeys = new Set(); rcpSelectedLogs = new Map();
 
             const tbody = document.querySelector('#receiptPrintTable tbody');
             if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted"><div class="spinner-border spinner-border-sm mb-2" style="color:#f59e0b"></div><div>กำลังดึงประวัติทั้งหมดของสินค้านี้ (รวมข้อมูลที่ Archive ไว้)...</div></td></tr>';
@@ -17675,6 +17675,9 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
         // ============================================================
         let rcpFilteredLogs = [];      // รายการที่ผ่านตัวกรองล่าสุด (เฉพาะ เบิก/ยืม)
         let rcpSelectedKeys = new Set(); // เก็บ key ของแถวที่ถูกติ๊กเลือกไว้ (คงอยู่แม้กรองใหม่)
+        // ★ เก็บ "ตัวรายการเต็ม" ของแถวที่ติ๊กไว้ด้วย — เดิมตอนพิมพ์ไปค้นซ้ำใน allData.history ซึ่งถูกเขียนทับเมื่อโหลดข้อมูลใหม่
+        // (หรือรายการถูกย้ายไป Archive ตอนปิดเดือน) ทำให้ตารางยังเห็นแถว แต่พิมพ์แล้วขึ้น "ไม่พบรายการที่เลือกไว้ในระบบ"
+        let rcpSelectedLogs = new Map();
 
         let rcpOrientation = 'portrait'; // 'portrait' or 'landscape'
         let rcpShowCutLines = true; // 🆕 แสดงเส้นประ+ไอคอนกรรไกรระหว่างใบเสร็จ เผื่อตัดแยกทีหลัง
@@ -17876,7 +17879,10 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
 
         // ใช้รายการที่ผู้ใช้ติ๊กเลือกไว้จริงมาแสดงในพรีวิว (ถ้ามี) แทนข้อมูลตัวอย่างสมมติ
         function _rcpSelectedLogs() {
-            return (allData.history || []).filter(function(log) { return rcpSelectedKeys.has(rcpRowKey(log)); });
+            const byKey = new Map();
+            (allData.history || []).forEach(function(log) { const k = rcpRowKey(log); if (rcpSelectedKeys.has(k)) byKey.set(k, log); });
+            rcpSelectedKeys.forEach(function(k) { if (!byKey.has(k) && rcpSelectedLogs.has(k)) byKey.set(k, rcpSelectedLogs.get(k)); });
+            return Array.from(byKey.values());
         }
 
         function _rcpPreviewDataFromLog(log, idx) {
@@ -17998,6 +18004,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                     const key = rcpRowKey(log);
                     const actLower = String(log.action).trim().toLowerCase();
                     const isChecked = rcpSelectedKeys.has(key);
+                    if (isChecked) rcpSelectedLogs.set(key, log);
                     let displayUser = log.user ? String(log.user).replace(/\[.*?\]/g, '').replace(' (แจ้งชำรุด)', '').replace(' (ซ่อมแซมแล้ว)', '') : 'ไม่ระบุ';
                     const badgeClass = actLower.startsWith('เบิก') ? 'bg-danger bg-opacity-10 text-danger' : 'bg-warning bg-opacity-10 text-warning';
                     let tr = document.createElement('tr');
@@ -18017,7 +18024,9 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
 
         function onRcpCheckboxChange(checkboxEl) {
             const key = decodeURIComponent(checkboxEl.getAttribute('data-key'));
-            if (checkboxEl.checked) rcpSelectedKeys.add(key); else rcpSelectedKeys.delete(key);
+            const tr = checkboxEl.closest('tr');
+            if (checkboxEl.checked) { rcpSelectedKeys.add(key); if (tr && tr._rcpLog) rcpSelectedLogs.set(key, tr._rcpLog); }
+            else { rcpSelectedKeys.delete(key); rcpSelectedLogs.delete(key); }
             updateRcpSelectedCount();
         }
 
@@ -18032,7 +18041,9 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             checkboxes.forEach(function(cb) {
                 cb.checked = shouldCheck;
                 const key = decodeURIComponent(cb.getAttribute('data-key'));
-                if (shouldCheck) rcpSelectedKeys.add(key); else rcpSelectedKeys.delete(key);
+                const tr = cb.closest('tr');
+                if (shouldCheck) { rcpSelectedKeys.add(key); if (tr && tr._rcpLog) rcpSelectedLogs.set(key, tr._rcpLog); }
+                else { rcpSelectedKeys.delete(key); rcpSelectedLogs.delete(key); }
             });
             document.getElementById('rcpSelectAllCheckbox').checked = shouldCheck;
             updateRcpSelectedCount();
@@ -18112,8 +18123,11 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                 Swal.fire({ icon: 'warning', title: 'ยังไม่ได้เลือกรายการ', text: 'กรุณาติ๊กเลือกรายการที่ต้องการอย่างน้อย 1 รายการ' });
                 return null;
             }
-            // จับคู่ key ที่เลือกไว้ กับ log object เต็ม จากทุกแถวที่เคยแสดงผล (ไม่ใช่แค่หน้าปัจจุบัน)
-            const logsToFetch = (allData.history || []).filter(function(log) { return rcpSelectedKeys.has(rcpRowKey(log)); });
+            // จับคู่ key ที่เลือกไว้ กับ log object เต็ม: ใช้ตัวที่เก็บไว้ตอนติ๊กก่อน แล้วเสริมจาก allData.history
+            const _byKey = new Map();
+            (allData.history || []).forEach(function(log) { const k = rcpRowKey(log); if (rcpSelectedKeys.has(k)) _byKey.set(k, log); });
+            rcpSelectedKeys.forEach(function(k) { if (!_byKey.has(k) && rcpSelectedLogs.has(k)) _byKey.set(k, rcpSelectedLogs.get(k)); });
+            const logsToFetch = Array.from(_byKey.values());
             if (logsToFetch.length === 0) {
                 Swal.fire({ icon: 'error', title: 'ไม่พบข้อมูล', text: 'ไม่พบรายการที่เลือกไว้ในระบบ กรุณาลองเลือกใหม่' });
                 return null;
