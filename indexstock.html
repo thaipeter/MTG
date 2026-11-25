@@ -3286,6 +3286,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             </div>
                             <div class="tab-pane fade p-4" id="tabItemsOrders">
                                 <div class="d-flex justify-content-end mb-3"><button class="btn btn-outline-success btn-sm shadow-sm fw-bold bg-white" onclick="exportExcel('orderItemsTable', 'Order_Consumables')"><i class="fas fa-file-excel"></i> Export</button></div>
+                                <div id="orderPickedWrap" class="mb-4"></div>
                                 <div id="orderItemsCardList" style="display:flex;flex-direction:column;gap:10px"></div>
                                 <div style="display:none"><table class="table table-hover align-middle mb-0" id="orderItemsTable"><thead><tr><th>รหัส</th><th>ชื่ออะไหล่</th><th>หมวดหมู่</th><th class="text-center">คงเหลือ (Stock)</th><th class="text-center text-primary">จุดสั่งซื้อ (Min)</th><th>หน่วย</th></tr></thead><tbody></tbody></table></div>
                             </div>
@@ -9390,6 +9391,106 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             });
         }
 
+
+        // ═══════════════════════════════════════════════════
+        // ★ รายการที่เลือกสั่งซื้อ: กดปุ่มรถเข็นที่การ์ดอะไหล่ที่ "ควรสั่งเพิ่ม" → รวมไว้ในหน้า "จัดการงานค้าง / สั่งซื้อ" แยกตามหมวด
+        // เก็บในเบราว์เซอร์เครื่องนี้ (localStorage) — ยังไม่ซิงก์ข้ามเครื่อง
+        // ═══════════════════════════════════════════════════
+        const ORDER_LIST_KEY = 'stockOrderList_v1';
+        function _orderListGet() { try { const o = JSON.parse(localStorage.getItem(ORDER_LIST_KEY) || '{}'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; } }
+        function _orderListSave(o) { try { localStorage.setItem(ORDER_LIST_KEY, JSON.stringify(o)); } catch (e) {} }
+        function _orderFindItem(code) { return (allData.items || []).find(i => String(i.code) === String(code)); }
+        function _orderSuggestQty(it) { return Math.max(1, Math.ceil((Number(it.min) || 0) - (Number(it.stock) || 0))); }
+        function _orderBtnHtml(code) {
+            const on = !!_orderListGet()[code], c = _jsAttr(code);
+            return `<button class="btn btn-sm btn-light border ${on ? 'text-success' : 'text-warning'}" data-order-code="${escapeHtml(code)}" onclick="orderListToggle('${c}', event)" title="${on ? 'อยู่ในรายการสั่งซื้อแล้ว (กดเพื่อเอาออก)' : 'เพิ่มในรายการสั่งซื้อ'}"><i class="fas ${on ? 'fa-check' : 'fa-cart-plus'}"></i></button>`;
+        }
+        function _orderSyncButtons() {
+            const o = _orderListGet();
+            document.querySelectorAll('[data-order-code]').forEach(btn => {
+                const on = !!o[btn.getAttribute('data-order-code')];
+                btn.classList.toggle('text-success', on); btn.classList.toggle('text-warning', !on);
+                btn.title = on ? 'อยู่ในรายการสั่งซื้อแล้ว (กดเพื่อเอาออก)' : 'เพิ่มในรายการสั่งซื้อ';
+                const ic = btn.querySelector('i'); if (ic) ic.className = 'fas ' + (on ? 'fa-check' : 'fa-cart-plus');
+            });
+        }
+        function orderListToggle(code, ev) {
+            if (ev) ev.stopPropagation();
+            const o = _orderListGet();
+            if (o[code]) delete o[code];
+            else { const it = _orderFindItem(code); o[code] = { qty: it ? _orderSuggestQty(it) : 1 }; }
+            _orderListSave(o); _orderSyncButtons(); renderOrderPicked();
+        }
+        function orderListSetQty(code, v) {
+            const o = _orderListGet(); if (!o[code]) return;
+            o[code].qty = Math.max(0, parseFloat(v) || 0); _orderListSave(o);
+        }
+        function orderListClear() {
+            Swal.fire({ icon: 'question', title: 'ล้างรายการสั่งซื้อ?', text: 'เอารายการที่เลือกไว้ออกทั้งหมด (ไม่กระทบสต็อก)', showCancelButton: true, confirmButtonText: 'ล้าง', cancelButtonText: 'ยกเลิก' })
+                .then(r => { if (r.isConfirmed) { _orderListSave({}); _orderSyncButtons(); renderOrderPicked(); } });
+        }
+        function _orderPickedRows() {
+            const o = _orderListGet();
+            return Object.keys(o).map(code => ({ it: _orderFindItem(code), qty: o[code].qty })).filter(x => x.it)
+                .sort((a, b) => String(getItemCategory(a.it)).localeCompare(String(getItemCategory(b.it)), 'th') || String(a.it.code).localeCompare(String(b.it.code)));
+        }
+        function orderListCopy() {
+            const rows = _orderPickedRows(); if (!rows.length) return;
+            let txt = 'รายการสั่งซื้อ ' + new Date().toLocaleDateString('th-TH') + '\n', cat = null;
+            rows.forEach(r => {
+                const c = getItemCategory(r.it) || 'ไม่ระบุหมวด';
+                if (c !== cat) { cat = c; txt += '\n[' + c + ']\n'; }
+                txt += '- ' + r.it.code + ' ' + r.it.name + (r.it.partNo ? ' (P/N ' + r.it.partNo + ')' : '') + ' x ' + r.qty + ' ' + (r.it.unit || '') + '\n';
+            });
+            const done = () => Swal.fire({ icon: 'success', title: 'คัดลอกแล้ว', timer: 1400, showConfirmButton: false });
+            if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, () => Swal.fire({ icon: 'error', title: 'คัดลอกไม่สำเร็จ' }));
+            else Swal.fire({ icon: 'info', title: 'คัดลอกไม่ได้บนเบราว์เซอร์นี้' });
+        }
+        function orderListExport() {
+            const rows = _orderPickedRows(); if (!rows.length) return;
+            const data = rows.map(r => ({ 'หมวดหมู่': getItemCategory(r.it) || '', 'รหัส': r.it.code, 'ชื่อรายการ': r.it.name, 'Part No.': r.it.partNo || '', 'คงเหลือ': r.it.stock, 'Min': r.it.min, 'จำนวนที่สั่ง': r.qty, 'หน่วย': r.it.unit || '' }));
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'Order');
+            XLSX.writeFile(wb, 'Order_List_' + new Date().toISOString().split('T')[0] + '.xlsx');
+        }
+        function renderOrderPicked() {
+            const wrap = document.getElementById('orderPickedWrap'); if (!wrap) return;
+            const rows = _orderPickedRows();
+            if (!rows.length) { wrap.innerHTML = '<div class="text-muted small"><i class="fas fa-info-circle me-1"></i>กดปุ่ม <i class="fas fa-cart-plus text-warning"></i> ที่รายการด้านล่าง (หรือที่การ์ดในหน้าอะไหล่) เพื่อรวมไว้เป็นรายการสั่งซื้อ</div>'; return; }
+            let html = `<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2"><h6 class="fw-bold mb-0"><i class="fas fa-cart-plus text-warning me-2"></i>รายการที่เลือกสั่ง <span class="badge bg-warning text-dark">${rows.length}</span></h6>
+                <div class="d-flex gap-2"><button class="btn btn-sm btn-outline-secondary fw-bold" onclick="orderListCopy()"><i class="fas fa-copy me-1"></i>คัดลอก</button><button class="btn btn-sm btn-outline-success fw-bold" onclick="orderListExport()"><i class="fas fa-file-excel me-1"></i>Excel</button><button class="btn btn-sm btn-outline-danger fw-bold" onclick="orderListClear()"><i class="fas fa-trash me-1"></i>ล้าง</button></div></div>`;
+            let cat = null;
+            rows.forEach(r => {
+                const c = getItemCategory(r.it) || 'ไม่ระบุหมวด';
+                if (c !== cat) { cat = c; html += `<div style="font-weight:700;font-size:13px;color:#60a5fa;margin:12px 0 6px"><i class="fas fa-folder me-1"></i>${escapeHtml(c)}</div>`; }
+                const code = _jsAttr(r.it.code);
+                html += `<div class="d-flex align-items-center gap-2 mb-2" style="background:#20242f;border:1px solid #2a2f3d;border-radius:10px;padding:8px 12px">
+                    <div style="flex:1;min-width:0"><div style="color:#fff;font-size:14px;font-weight:500">${escapeHtml(r.it.name)}</div><div style="font-size:12px;color:#6b7280">${escapeHtml(r.it.code)}${r.it.partNo ? ' · P/N ' + escapeHtml(r.it.partNo) : ''} · คงเหลือ ${formatNumber(r.it.stock)} / Min ${formatNumber(r.it.min)}</div></div>
+                    <input type="number" min="0" step="any" value="${escapeHtml(String(r.qty))}" class="form-control form-control-sm text-center fw-bold" style="width:78px" onchange="orderListSetQty('${code}', this.value)">
+                    <span class="text-muted small" style="width:38px">${escapeHtml(r.it.unit || '')}</span>
+                    <button class="btn btn-sm btn-light border text-danger" onclick="orderListToggle('${code}', event)" title="เอาออก"><i class="fas fa-times"></i></button></div>`;
+            });
+            wrap.innerHTML = html;
+        }
+        function _renderOrderGroups(listEl, lowItems) {
+            const groups = {};
+            lowItems.forEach(i => { const c = getItemCategory(i) || 'ไม่ระบุหมวด'; (groups[c] = groups[c] || []).push(i); });
+            Object.keys(groups).sort((a, b) => a.localeCompare(b, 'th')).forEach(c => {
+                const h = document.createElement('div');
+                h.style.cssText = 'font-weight:700;font-size:13px;color:#60a5fa;margin:10px 0 0';
+                h.innerHTML = `<i class="fas fa-folder me-1"></i>${escapeHtml(c)} <span class="text-muted fw-normal">(${groups[c].length})</span>`;
+                listEl.appendChild(h);
+                groups[c].sort((a, b) => String(a.code).localeCompare(String(b.code))).forEach(i => {
+                    const card = document.createElement('div');
+                    card.style.cssText = 'background:#20242f;border-radius:10px;padding:12px 14px;border:1px solid #2a2f3d;display:flex;align-items:center;gap:10px';
+                    card.innerHTML = `<div style="flex:1;min-width:0">
+                        <div style="color:#fff;font-size:14px;font-weight:500;margin-bottom:2px">${escapeHtml(i.name)}</div>
+                        <div style="font-size:12px;color:#6b7280">${escapeHtml(i.code)}${i.partNo ? ' · P/N ' + escapeHtml(i.partNo) : ''} · คงเหลือ <b style="color:#ef4444;font-size:14px">${formatNumber(i.stock)}</b> / จุดสั่งซื้อ ${formatNumber(i.min)} ${escapeHtml(i.unit || '')}</div></div>${_orderBtnHtml(i.code)}`;
+                    listEl.appendChild(card);
+                });
+            });
+            renderOrderPicked();
+        }
+
         function renderMonthlyOrders(damagedItems, lowItems, pos) {
             try {
                 const activePOs = pos.filter(p => p.status !== 'ได้รับแล้ว');
@@ -9404,26 +9505,15 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     if (itemsCardList) itemsCardList.innerHTML = '';
                     if(lowItems.length === 0) {
                         tItems.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-success fw-bold"><i class="fas fa-box fs-3 d-block mb-2"></i> สต็อกเพียงพอทุกรายการ</td></tr>';
-                        if (itemsCardList) itemsCardList.innerHTML = '<div class="text-center py-5" style="color:#22c55e"><i class="fas fa-box fs-3 d-block mb-2"></i> สต็อกเพียงพอทุกรายการ</div>';
+                        if (itemsCardList) itemsCardList.innerHTML = '<div class="text-center py-5" style="color:#22c55e"><i class="fas fa-box fs-3 d-block mb-2"></i> สต็อกเพียงพอทุกรายการ</div>'; renderOrderPicked();
                     } else {
                         lowItems.forEach(i => {
                             let tr = document.createElement('tr');
                             tr.innerHTML = `<td>${escapeHtml(i.code)}</td><td>${escapeHtml(i.name)}</td><td>${escapeHtml(getItemCategory(i))}</td><td class="text-center">${formatNumber(i.stock)}</td><td class="text-center">${formatNumber(i.min)}</td><td>${escapeHtml(i.unit)}</td>`;
                             tItems.appendChild(tr);
 
-                            if (itemsCardList) {
-                                const card = document.createElement('div');
-                                card.style.cssText = 'background:#20242f;border-radius:10px;padding:14px;border:1px solid #2a2f3d';
-                                card.innerHTML = `
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <span class="font-monospace" style="background:#232838;color:#e0e0e0;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px">${escapeHtml(i.code)}</span>
-                                        <span style="background:#1e3a5f;color:#60a5fa;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px">${escapeHtml(getItemCategory(i))}</span>
-                                    </div>
-                                    <p style="color:#fff;font-size:14px;font-weight:500;margin:0 0 8px">${escapeHtml(i.name)}</p>
-                                    <div style="font-size:12px;color:#6b7280">คงเหลือ <b style="color:#ef4444;font-size:14px">${formatNumber(i.stock)}</b> / จุดสั่งซื้อ ${formatNumber(i.min)} ${escapeHtml(i.unit)}</div>`;
-                                itemsCardList.appendChild(card);
-                            }
                         });
+                        if (itemsCardList) _renderOrderGroups(itemsCardList, lowItems);
                     }
                 }
 
@@ -10029,7 +10119,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     const qrBtn = _b('text-primary', `showQRCode('${safeCode}', '${safeName}')`, 'แสดง QR Code', 'fa-qrcode');
                     if (currentUserProfile.role === 'admin') {
                         const moreBtn = _b('text-secondary', `openInvMore(event,'${safeCode}','${safeType}')`, 'เพิ่มเติม: QR / แก้ไข / ลบ', 'fa-ellipsis-h');
-                        if (type === 'item') { actionButtons = `<div class="inv-act">${_b('text-success', `openAdjustModal('${safeCode}', '${safeName}', '${safeUnit}', 'add')`, 'เพิ่มยอดแมนนวล', 'fa-plus')}${_b('text-danger', `openAdjustModal('${safeCode}', '${safeName}', '${safeUnit}', 'remove')`, 'ลดยอดแมนนวล', 'fa-minus')}${moreBtn}</div>`; }
+                        if (type === 'item') { actionButtons = `<div class="inv-act">${isLow ? _orderBtnHtml(item.code) : ''}${_b('text-success', `openAdjustModal('${safeCode}', '${safeName}', '${safeUnit}', 'add')`, 'เพิ่มยอดแมนนวล', 'fa-plus')}${_b('text-danger', `openAdjustModal('${safeCode}', '${safeName}', '${safeUnit}', 'remove')`, 'ลดยอดแมนนวล', 'fa-minus')}${moreBtn}</div>`; }
                         else if (type === 'tool') { actionButtons = `<div class="inv-act">${_b('text-danger', `openDamageModal('${safeCode}', '${safeName}', '${safeUnit}')`, 'แจ้งเสีย', 'fa-heart-broken')}${_b('text-success', `openRepairModal('${safeCode}', '${safeName}', '${safeUnit}', 1)`, 'ซ่อมแล้ว', 'fa-tools')}${moreBtn}</div>`; }
                     } else {
                         if (type === 'item') { actionButtons = `<div class="inv-act">${qrBtn}</div>`; }
