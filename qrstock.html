@@ -1096,6 +1096,10 @@ body{display:flex;flex-direction:column}
         <div class="ni-label">ชื่อรายการ <span style="color:var(--red)">*</span></div>
         <input class="ni-input" id="niName" placeholder="ชื่อสินค้า/อะไหล่" required>
       </div>
+      <div class="ni-field" id="niPartNoWrap" style="flex:2">
+        <div class="ni-label">Part No.</div>
+        <input class="ni-input" id="niPartNo" placeholder="รหัสผู้ผลิต" maxlength="100">
+      </div>
       <div class="ni-field" style="flex:2">
         <div class="ni-label">หน่วย <span style="color:var(--red)">*</span></div>
         <input class="ni-input" id="niUnit" placeholder="ชิ้น, อัน, ม้วน..." required>
@@ -2090,7 +2094,8 @@ function loginSuccess(uid) {
   if (stTab) stTab.style.display = (me.role === 'admin' || me.role === 'staff') ? 'flex' : 'none';
   // reset mine data
   mineData = { history: [], borrows: [], retro: [], retroPending: [] };
-  document.getElementById('mineStatWithdraw').textContent = '-';
+  document.getElementById('mineStatWithdraw').textContent = '-';
+
   document.getElementById('mineStatReceive').textContent = '-';
   document.getElementById('mineStatBorrow').textContent = '-';
   document.getElementById('mineStatTotal').textContent = '-';
@@ -2392,7 +2397,7 @@ function _logoutNow() {
       sessionStorage.removeItem('withdrawCart');
       sessionStorage.removeItem('borrowCart');
       sessionStorage.removeItem('receiveCart');
-      ['niName','niUnit','niRemark','niLocation','niQty','niMin','niCode','niCat','niType'].forEach(id => {
+      ['niName','niUnit','niRemark','niLocation','niPartNo','niQty','niMin','niCode','niCat','niType'].forEach(id => {
         sessionStorage.removeItem('form_' + id);
       });
     } catch(e) {}
@@ -3152,7 +3157,7 @@ function renderList(mode, kw, cat) {
   const cart = mode === 'withdraw' ? withdrawCart : borrowCart;
   let list   = mode === 'borrow' ? (allData.tools || []) : (allData.items || []);
   if (cat && cat !== '__all__') list = list.filter(i => (i.category || 'อื่นๆ') === cat);
-  if (kw) list = list.filter(i => _matchesSearchQuery(`${i.name} ${i.code}`, kw));
+  if (kw) list = list.filter(i => _matchesSearchQuery(`${i.name} ${i.code} ${i.partNo || ''}`, kw));
   if (!list.length) {
     el.innerHTML = '<div class="empty-state"><i class="fas fa-box-open"></i><p>' + (kw ? 'ไม่พบ "' + esc(kw) + '"' : 'ไม่มีสินค้าในหมวดนี้') + '</p></div>';
     return;
@@ -3179,7 +3184,7 @@ function renderList(mode, kw, cat) {
       ? '<button style="background:var(--red-dim);color:var(--red);border:1px solid var(--red);border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:not-allowed" disabled>ชำรุด</button>'
       : '<button onclick="event.stopPropagation();addToCart(\'' + item.code + '\',\'' + mode + '\')" style="background:' + (inCart ? 'var(--green)' : 'var(--amber)') + ';color:#111;border:none;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;cursor:pointer">' + (inCart ? '✓ เพิ่ม' : '+ เพิ่ม') + '</button>';
 
-    return '<div class="item-card' + (inCart ? ' in-cart' : '') + '" style="padding:10px 12px">'      + imgClickHtml      + '<div class="item-info" style="flex:1;min-width:0" onclick="addToCart(\'' + item.code + '\',\'' + mode + '\')">'      + '<div class="item-name">' + esc(item.name) + '</div>'      + '<div class="item-code">' + item.code + '</div>'      + badgeHtml      + '</div>'      + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'      + '<div class="item-stock" style="text-align:right"><div class="stock-num ' + sc + '">' + item.stock + '</div><div class="stock-unit">' + item.unit + '</div></div>'      + buttonHtml      + '</div>'      + '</div>';
+    return '<div class="item-card' + (inCart ? ' in-cart' : '') + '" style="padding:10px 12px">'      + imgClickHtml      + '<div class="item-info" style="flex:1;min-width:0" onclick="addToCart(\'' + item.code + '\',\'' + mode + '\')">'      + '<div class="item-name">' + esc(item.name) + '</div>'      + '<div class="item-code">' + item.code + (item.partNo ? ' · P/N ' + esc(item.partNo) : '') + '</div>'      + badgeHtml      + '</div>'      + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'      + '<div class="item-stock" style="text-align:right"><div class="stock-num ' + sc + '">' + item.stock + '</div><div class="stock-unit">' + item.unit + '</div></div>'      + buttonHtml      + '</div>'      + '</div>';
   }).join('');
 }
 
@@ -3344,7 +3349,7 @@ function openReceivePicker() {
 }
 
 function renderReceivePicker(kw) {
-  const items = getAllItems().filter(i => _matchesSearchQuery(`${i.name} ${i.code}`, kw));
+  const items = getAllItems().filter(i => _matchesSearchQuery(`${i.name} ${i.code} ${i.partNo || ''}`, kw));
   const el = document.getElementById('receivePickerList');
   if (!items.length) { el.innerHTML = '<div class="empty-state"><i class="fas fa-box-open"></i><p>ไม่พบสินค้า</p></div>'; return; }
   el.innerHTML = items.map(function(item) {
@@ -3357,7 +3362,7 @@ function renderReceivePicker(kw) {
       + '<div class="item-icon" style="width:46px;height:46px;overflow:hidden;border-radius:8px;background:var(--surface);border:1px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center">' + iconHtml + '</div>'
       + '<div class="item-info">'
       + '<div class="item-name">' + esc(item.name) + '</div>'
-      + '<div class="item-code">' + item.code + '</div>'
+      + '<div class="item-code">' + item.code + (item.partNo ? ' · P/N ' + esc(item.partNo) : '') + '</div>'
       + '</div>'
       + '<div class="item-stock">'
       + '<div class="stock-num stock-ok">' + item.stock + '</div>'
@@ -3589,7 +3594,7 @@ function niInit() {
   const isBlank = !niName || !niName.value.trim();
   if (isBlank || !_niInitialized) {
     niImgBase64 = null; niImgMime = 'image/jpeg';
-    ['niName','niUnit','niRemark','niLocation'].forEach(id => {
+    ['niName','niUnit','niRemark','niLocation','niPartNo'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = sessionStorage.getItem('form_' + id) || '';
     });
@@ -3608,7 +3613,7 @@ function niInit() {
   }
 }
 
-function niUpdateCategory() { niUpdateCode(); }
+function niUpdateCategory() { niUpdateCode(); const w = document.getElementById('niPartNoWrap'), t = document.getElementById('niType'); if (w && t) w.style.display = (t.value === 'Tools') ? 'none' : ''; }
 
 function niUpdateCode() {
   const type = document.getElementById('niType')?.value || 'Items';
@@ -3764,6 +3769,7 @@ function submitNewItem() {
   const qty      = parseFloat(document.getElementById('niQty')?.value) || 0;
   const location = document.getElementById('niLocation')?.value?.trim() || '';
   const remark   = document.getElementById('niRemark')?.value?.trim() || '';
+  const partNo   = type === 'Items' ? (document.getElementById('niPartNo')?.value?.trim() || '') : '';
 
   if (!cat)  { showToast('กรุณาเลือกหมวดหมู่', 'error'); return; }
   if (!code) { showToast('กรุณากดสร้างรหัสก่อน', 'error'); return; }
@@ -3784,7 +3790,7 @@ function submitNewItem() {
   const btn = document.getElementById('niSubmitBtn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...'; }
 
-  const payload = [{ type, category: cat, code, name, unit, min, qty, location, remark, user: me.name, userId: me.uid }];
+  const payload = [{ type, category: cat, code, name, unit, min, qty, location, partNo, remark, user: me.name, userId: me.uid }];
 
   callGAS('webAddNewItems', [payload], res => {
     if (!res || !res.success) {
@@ -3797,10 +3803,10 @@ function submitNewItem() {
     callGAS('webSaveItemImage', [{ code: code, type: type==='Tools'?'tool':'item', base64: niImgBase64, mimeType: niImgMime, userName: me.name, userId: me.uid }], function(imgRes) {
         var tempUrl = (imgRes && imgRes.imageUrl) ? imgRes.imageUrl : '';
         var arr = type === 'Tools' ? (allData.tools || (allData.tools=[])) : (allData.items || (allData.items=[]));
-        arr.push({ code:code, name:name, category:cat, location:location, unit:unit, min:min, stock:qty, remark:remark, imageUrl:tempUrl });
+        arr.push({ code:code, name:name, category:cat, location:location, partNo:partNo, unit:unit, min:min, stock:qty, remark:remark, imageUrl:tempUrl });
         showToast('เพิ่ม "' + name + '" สำเร็จ!', 'success');
         if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> บันทึก'; }
-        ['niName','niUnit','niRemark','niLocation','niQty','niMin','niCode','niCat','niType'].forEach(id => {
+        ['niName','niUnit','niRemark','niLocation','niPartNo','niQty','niMin','niCode','niCat','niType'].forEach(id => {
           sessionStorage.removeItem('form_' + id);
         });
         _niInitialized = false; // force reset form ครั้งถัดไป
@@ -3809,10 +3815,10 @@ function submitNewItem() {
       });
     } else {
       const arr = type === 'Tools' ? (allData.tools||(allData.tools=[])) : (allData.items||(allData.items=[]));
-      arr.push({ code, name, category: cat, location, unit, min, stock: qty, remark, imageUrl: '' });
+      arr.push({ code, name, category: cat, location, partNo, unit, min, stock: qty, remark, imageUrl: '' });
       showToast(`เพิ่ม "${name}" สำเร็จ!`, 'success');
       if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> บันทึก'; }
-      ['niName','niUnit','niRemark','niLocation','niQty','niMin','niCode','niCat','niType'].forEach(id => {
+      ['niName','niUnit','niRemark','niLocation','niPartNo','niQty','niMin','niCode','niCat','niType'].forEach(id => {
         sessionStorage.removeItem('form_' + id);
       });
       _niInitialized = false; // force reset form ครั้งถัดไป

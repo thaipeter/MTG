@@ -91,18 +91,20 @@
 .ni2-list tbody td:nth-child(1){grid-column:span 4}
 .ni2-list tbody td:nth-child(2){grid-column:span 8;padding-right:42px!important}
 .ni2-list tbody td:nth-child(3){grid-column:span 4}
-.ni2-list tbody td:nth-child(4){grid-column:span 2}
+.ni2-list tbody td:nth-child(4){grid-column:span 4}
 .ni2-list tbody td:nth-child(5){grid-column:span 2}
 .ni2-list tbody td:nth-child(6){grid-column:span 2}
 .ni2-list tbody td:nth-child(7){grid-column:span 2}
-.ni2-list tbody td:nth-child(8){grid-column:span 12;text-align:left!important}
-.ni2-list tbody td:nth-child(8) .d-flex{flex-direction:row!important;justify-content:flex-start;gap:10px!important}
+.ni2-list tbody td:nth-child(8){grid-column:span 2}
+.ni2-list tbody td:nth-child(9){grid-column:span 12;text-align:left!important}
+#newItemModal[data-ni-type="Tools"] .pn-col{display:none!important}
+.ni2-list tbody td:nth-child(9) .d-flex{flex-direction:row!important;justify-content:flex-start;gap:10px!important}
 .ni2-list tbody td.ni2-del{position:absolute;top:12px;right:12px;width:auto}
 .ni2-list tbody td.ni2-del::before{display:none}
 .ni2-list tbody td.ni2-del .btn{width:34px;height:34px;padding:0;border-radius:10px;background:rgba(239,68,68,.14);border:1px solid rgba(239,68,68,.35);color:#f87171}
 .ni2-list tbody td.ni2-del .btn:hover{background:#ef4444;color:#fff}
 .ni2-list .price-only-element[style*="display: none"],.ni2-list .price-only-element.d-none{display:none!important}
-@media(max-width:576px){.ni2-list tbody td:nth-child(n+3):nth-child(-n+7){grid-column:span 6}.ni2-list tbody td:nth-child(1),.ni2-list tbody td:nth-child(2){grid-column:span 12}.tx2-stock{display:none}}
+@media(max-width:576px){.ni2-list tbody td:nth-child(n+3):nth-child(-n+8){grid-column:span 6}.ni2-list tbody td:nth-child(1),.ni2-list tbody td:nth-child(2){grid-column:span 12}.tx2-stock{display:none}}
 
 /* ===== แดชบอร์ดดีไซน์ใหม่ ===== */
 .swal2-select option,select.form-select option{color:#1e293b;background:#fff}
@@ -2024,6 +2026,10 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             <input type="text" class="form-control fw-medium" id="editItemName" oninput="validateEditItemName()" required>
                             <div id="editItemNameError" class="text-danger fw-bold" style="font-size: 10px; display: none; margin-top: 4px;"></div>
                         </div>
+                        <div class="mb-3" id="editItemPartNoWrap">
+                            <label class="form-label text-muted small fw-bold">Part Number <small class="text-muted fw-normal">— รหัสอะไหล่ของผู้ผลิต (ไม่แสดงบนป้าย QR)</small></label>
+                            <input type="text" class="form-control" id="editItemPartNo" maxlength="100" placeholder="เช่น 6204-2RS">
+                        </div>
                         <div class="mb-3">
                             <label class="form-label text-muted small fw-bold">ตำแหน่งจัดเก็บ (Location)</label>
                             <input type="text" class="form-control" id="editItemLocation" list="editLocationOptions" placeholder="เช่น A1, ชั้น 2">
@@ -2234,6 +2240,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                                     <tr class="small fw-bold text-muted">
                                         <th style="width:17%">รหัส <span class="text-danger">*</span></th>
                                         <th style="width:19%">ชื่อรายการ <span class="text-danger">*</span></th>
+                                        <th style="width:10%" class="pn-col">Part No.</th>
                                         <th style="width:10%">ตำแหน่ง</th>
                                         <th style="width:7%">หน่วย <span class="text-danger">*</span></th>
                                         <th style="width:6%">MIN</th>
@@ -2443,6 +2450,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                             <h5 class="fw-bold mb-2" id="rhItemName" style="color:#fff">-</h5>
                             <div class="d-flex gap-2 flex-wrap">
                                 <span class="badge font-monospace" id="rhItemCode" style="background:transparent;color:#a0aec0;border:1px solid #2a2f3d">-</span>
+                                <span class="badge font-monospace" id="rhItemPartNo" style="display:none;background:transparent;color:#a0aec0;border:1px solid #2a2f3d"></span>
                                 <span class="badge" id="rhItemCat" style="background:#1e3a2f;color:#22c55e">-</span>
                                 <span class="badge" id="rhItemLoc" style="background:transparent;color:#a0aec0;border:1px solid #2a2f3d"><i class="fas fa-map-marker-alt text-danger me-1"></i> -</span>
                                 <span class="badge" id="rhItemStock" style="background:#1e3a2f;color:#22c55e">คงเหลือ: -</span>
@@ -9348,7 +9356,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     try {
                         const wb = XLSX.utils.book_new();
 
-                        const wsItems = XLSX.utils.json_to_sheet(allData.items.map(i => ({ 'รหัส': i.code, 'ชื่อรายการ': i.name, 'หมวดหมู่': i.category, 'ตำแหน่ง': i.location || '-', 'คงเหลือ': i.stock, 'จุดสั่งซื้อ (Min)': i.min, 'หน่วย': i.unit })));
+                        const wsItems = XLSX.utils.json_to_sheet(allData.items.map(i => ({ 'รหัส': i.code, 'ชื่อรายการ': i.name, 'Part No.': i.partNo || '', 'หมวดหมู่': i.category, 'ตำแหน่ง': i.location || '-', 'คงเหลือ': i.stock, 'จุดสั่งซื้อ (Min)': i.min, 'หน่วย': i.unit })));
                         XLSX.utils.book_append_sheet(wb, wsItems, "คลังอะไหล่ (Items)");
 
                         const wsTools = XLSX.utils.json_to_sheet(allData.tools.map(i => ({ 'รหัส': i.code, 'ชื่อเครื่องมือ': i.name, 'หมวดหมู่': i.category, 'ตำแหน่ง': i.location || '-', 'พร้อมใช้': i.stock, 'จุดสั่งซื้อ (Min)': i.min, 'หน่วย': i.unit })));
@@ -9938,7 +9946,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 const baseData = isItems ? allData.items : allData.tools; const type = isItems ? 'item' : 'tool';
                 const filteredData = baseData.filter(item => {
                     const catText = String(getItemCategory(item)).toLowerCase().trim();
-                    if (text !== '' && !_matchesSearchQuery(`${item.code || ''} ${item.name || ''}`, text)) return false; if (category !== '' && !catText.includes(category)) return false; if (window.__lowStockOnly && !(parseFloat(item.stock) <= parseFloat(item.min))) return false; return true;
+                    if (text !== '' && !_matchesSearchQuery(`${item.code || ''} ${item.name || ''} ${item.partNo || ''}`, text)) return false; if (category !== '' && !catText.includes(category)) return false; if (window.__lowStockOnly && !(parseFloat(item.stock) <= parseFloat(item.min))) return false; return true;
                 });
                 renderTable(tableId, filteredData, type);
                 // ★ เพิ่ม: รีเฟรชการ์ดประวัติรับเข้า/เบิกออกของหน้าคลังอะไหล่ให้ตรงกับข้อมูลล่าสุดเสมอ
@@ -10045,7 +10053,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                     const valueCell = userCanSeePrice()
                         ? `<td class="text-end price-only-element fw-bold ${item.price ? 'text-dark' : 'text-muted'}">${item.price ? formatNumber(itemValue) : '-'}</td>`
                         : `<td class="text-end price-only-element" style="display:none"></td>`;
-                    tr.innerHTML = `${checkboxCell}<td><span class="badge badge-code px-2 py-1">${escapeHtml(item.code)}</span></td><td class="fw-bold text-dark fs-6">${escapeHtml(item.name)}</td><td><span class="badge badge-cat px-2 py-1">${escapeHtml(displayCat)}</span></td><td>${displayLocation}</td><td class="text-center">${imageCell}</td>${stockCell}<td class="text-muted fw-medium">${escapeHtml(item.unit)}</td>${valueCell}${statusCell}<td class="text-center">${actionButtons}</td>`;
+                    tr.innerHTML = `${checkboxCell}<td><span class="badge badge-code px-2 py-1">${escapeHtml(item.code)}</span></td><td class="fw-bold text-dark fs-6">${escapeHtml(item.name)}${item.partNo ? `<div class="fw-normal text-muted" style="font-size:12px"><i class="fas fa-barcode me-1"></i>P/N: ${escapeHtml(item.partNo)}</div>` : ''}</td><td><span class="badge badge-cat px-2 py-1">${escapeHtml(displayCat)}</span></td><td>${displayLocation}</td><td class="text-center">${imageCell}</td>${stockCell}<td class="text-muted fw-medium">${escapeHtml(item.unit)}</td>${valueCell}${statusCell}<td class="text-center">${actionButtons}</td>`;
                     tr.style.cursor = 'pointer';
                     tr.title = 'คลิกเพื่อดูประวัติการรับเข้า';
                     tr.addEventListener('click', function(e) {
@@ -10080,7 +10088,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                                 <div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between">
                                     <div>
                                         <p style="color:#fff;font-size:14px;font-weight:500;margin:0;overflow-wrap:break-word;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden">${escapeHtml(item.name)}</p>
-                                        <div style="font-size:12px;color:#6b7280;margin-top:2px">${escapeHtml(item.code)} · ${escapeHtml(displayCat)}${item.location ? ` · <i class="fas fa-map-marker-alt text-danger"></i> ${escapeHtml(item.location)}` : ''}</div>
+                                        <div style="font-size:12px;color:#6b7280;margin-top:2px">${escapeHtml(item.code)}${item.partNo ? ' · P/N ' + escapeHtml(item.partNo) : ''} · ${escapeHtml(displayCat)}${item.location ? ` · <i class="fas fa-map-marker-alt text-danger"></i> ${escapeHtml(item.location)}` : ''}</div>
                                         <div class="ml-card-status" style="margin-top:4px;font-size:11px"></div>
                                     </div>
                                 </div>
@@ -10330,7 +10338,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             pop.addEventListener('click', function(e) {
                 var b = e.target.closest('button'); if (!b) return; var a = b.getAttribute('data-a'); close();
                 if (a === 'qr') showQRCode(it.code, it.name);
-                else if (a === 'edit') openEditItemModal(it.code, it.name, getItemCategory(it), it.unit || '', it.min, type, it.location || '', Number(it.price) || 0);
+                else if (a === 'edit') openEditItemModal(it.code, it.name, getItemCategory(it), it.unit || '', it.min, type, it.location || '', Number(it.price) || 0, it.partNo || '');
                 else if (a === 'del') deleteProductItem(it.code, it.name, type);
             });
         }
@@ -10429,6 +10437,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             document.querySelectorAll('#rhPills .rh-pill').forEach(b => b.classList.toggle('active', b.dataset.v === ''));
             document.getElementById('rhItemName').textContent = item.name;
             document.getElementById('rhItemCode').textContent = item.code;
+            { const _pn = document.getElementById('rhItemPartNo'); if (_pn) { _pn.textContent = item.partNo ? ('P/N: ' + item.partNo) : ''; _pn.style.display = item.partNo ? '' : 'none'; } }
             document.getElementById('rhItemCat').textContent = getItemCategory(item) || '-';
             document.getElementById('rhItemLoc').innerHTML = `<i class="fas fa-map-marker-alt text-danger me-1"></i> ${escapeHtml(item.location || '-')}`;
             document.getElementById('rhItemStock').textContent = `คงเหลือ: ${formatNumber(item.stock)} ${item.unit || ''}`;
@@ -11965,11 +11974,17 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
 
         function updateNewItemCount() { const c = document.querySelectorAll('#newItemsTableBody tr').length; const b = document.getElementById('niCount'); if (b) b.textContent = c; }
 
+        function syncNewItemPartNoVis() {
+            const m = document.getElementById('newItemModal'), t = document.getElementById('newItemType');
+            if (m && t) m.setAttribute('data-ni-type', t.value);
+        }
+        document.addEventListener('change', function (e) { if (e.target && e.target.id === 'newItemType') syncNewItemPartNoVis(); });
         function addNewItemRow() {
             const tbody = document.getElementById('newItemsTableBody');
             window.newItemRowCounter = (window.newItemRowCounter || 0) + 1;
             const rowId = 'row_' + window.newItemRowCounter + '_' + Math.random().toString(36).substr(2, 9);
             
+            syncNewItemPartNoVis();
             const row = document.createElement('tr');
             row.id = rowId;
             row.innerHTML = `
@@ -11981,6 +11996,9 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                 </td>
                 <td data-label="ชื่อรายการ">
                     <input type="text" class="form-control form-control-sm shadow-sm fw-bold" data-name-input placeholder="ชื่อรายการ" required>
+                </td>
+                <td data-label="Part No. (รหัสผู้ผลิต)" class="pn-col">
+                    <input type="text" class="form-control form-control-sm shadow-sm" data-partno-input maxlength="100" placeholder="เช่น 6204-2RS">
                 </td>
                 <td data-label="ตำแหน่ง">
                     <input type="text" class="form-control form-control-sm shadow-sm" data-location-input list="locationOptions" placeholder="ตำแหน่ง">
@@ -12159,6 +12177,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                 const code = row.querySelector('[data-code-input]').value.trim();
                 const name = row.querySelector('[data-name-input]').value.trim();
                 const location = row.querySelector('[data-location-input]').value.trim();
+                const partNo = row.querySelector('[data-partno-input]') ? row.querySelector('[data-partno-input]').value.trim() : '';
                 const unit = row.querySelector('[data-unit-input]').value.trim();
                 const min = parseFloat(row.querySelector('[data-min-input]').value) || 0;
                 const qty = parseFloat(row.querySelector('[data-qty-input]').value) || 0;
@@ -12176,6 +12195,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                     code: code,
                     name: name,
                     location: location,
+                    partNo: type === 'Items' ? partNo : '',
                     unit: unit,
                     min: min,
                     price: price,
@@ -12227,7 +12247,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             
             // ตัด _imgBase64/_imgMime ออกก่อนส่ง GAS เพื่อลด payload size
             const gasPayloads = payloads.map(function(p) {
-                return { type: p.type, category: p.category, code: p.code, name: p.name, location: p.location, unit: p.unit, min: p.min, price: p.price, qty: p.qty, date: p.date, remark: p.remark, user: p.user, userId: p.userId };
+                return { type: p.type, category: p.category, code: p.code, name: p.name, location: p.location, partNo: p.partNo, unit: p.unit, min: p.min, price: p.price, qty: p.qty, date: p.date, remark: p.remark, user: p.user, userId: p.userId };
             });
 
             if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -12255,7 +12275,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                         Swal.fire({icon: 'success', title: 'สำเร็จ!', text: `เพิ่มรายการใหม่ ${payloads.length} รายการสำเร็จ!${imgPayloads.length > 0 ? ` (กำลังอัปโหลดรูป ${imgPayloads.length} รูป...)` : ''}`, timer: 2500, showConfirmButton: false});
                         const itemList = type === 'Tools' ? allData.tools : allData.items;
                         payloads.forEach(p => {
-                            itemList.push({ code: p.code, name: p.name, category: p.category, location: p.location, unit: p.unit, min: p.min, stock: p.qty, price: Number(p.price) || 0, date: p.date, remark: p.remark, imageUrl: '' });
+                            itemList.push({ code: p.code, name: p.name, category: p.category, location: p.location, partNo: p.partNo || '', unit: p.unit, min: p.min, stock: p.qty, price: Number(p.price) || 0, date: p.date, remark: p.remark, imageUrl: '' });
                             allData.history.unshift({ time: getFormattedDate(), action: 'รับเข้า', code: p.code, itemName: p.name, amount: '+' + formatNumber(p.qty), balance: formatNumber(p.qty), user: p.user });
                         });
                         onDataLoaded(allData);
@@ -12595,11 +12615,13 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
             });
         }
 
-        function openEditItemModal(code, name, category, unit, min, type, location, price) {
+        function openEditItemModal(code, name, category, unit, min, type, location, price, partNo) {
             if (currentUserProfile.role !== 'admin') return Swal.fire({icon: 'error', title: 'ปฏิเสธการเข้าถึง', text: 'สิทธิ์การใช้งานไม่เพียงพอ! (เฉพาะ Admin เท่านั้น)'});
             const ci = document.getElementById('editItemCat'); const cdi = document.getElementById('editItemCode'); const ti = document.getElementById('editItemType');
             cdi.value = code; document.getElementById('editItemName').value = name; ci.value = category; document.getElementById('editItemUnit').value = unit; document.getElementById('editItemMin').value = min; ti.value = type; document.getElementById('editItemLocation').value = location;
             const priceInput = document.getElementById('editItemPrice'); if (priceInput) priceInput.value = price || '';
+            const pnInput = document.getElementById('editItemPartNo'), pnWrap = document.getElementById('editItemPartNoWrap');
+            if (pnInput) pnInput.value = partNo || ''; if (pnWrap) pnWrap.style.display = (type === 'item') ? '' : 'none';
             const editNameInput = document.getElementById('editItemName');
             editNameInput.classList.remove('is-invalid');
             const errDiv = document.getElementById('editItemNameError');
@@ -12611,7 +12633,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
 
         function submitEditItem() {
             const priceVal = document.getElementById('editItemPrice') ? document.getElementById('editItemPrice').value : '';
-            const payload = { code: document.getElementById('editItemCode').value, name: document.getElementById('editItemName').value.trim(), category: document.getElementById('editItemCat').value.trim(), location: document.getElementById('editItemLocation').value.trim(), unit: document.getElementById('editItemUnit').value.trim(), min: parseFloat(document.getElementById('editItemMin').value) || 0, price: priceVal !== '' ? (parseFloat(priceVal) || 0) : 0, type: document.getElementById('editItemType').value, user: currentUserProfile.name, userId: currentUserProfile.uid };
+            const payload = { code: document.getElementById('editItemCode').value, name: document.getElementById('editItemName').value.trim(), category: document.getElementById('editItemCat').value.trim(), location: document.getElementById('editItemLocation').value.trim(), unit: document.getElementById('editItemUnit').value.trim(), min: parseFloat(document.getElementById('editItemMin').value) || 0, price: priceVal !== '' ? (parseFloat(priceVal) || 0) : 0, type: document.getElementById('editItemType').value, partNo: (document.getElementById('editItemPartNo') ? document.getElementById('editItemPartNo').value.trim() : ''), user: currentUserProfile.name, userId: currentUserProfile.uid };
             if(!payload.name || !payload.category || !payload.unit) return Swal.fire({icon: 'warning', title: 'แจ้งเตือน', text: 'กรุณากรอกข้อมูลที่มี * ให้ครบถ้วน'});
             document.getElementById('loading').style.display = 'flex'; editItemModal.hide();
             if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -12624,7 +12646,7 @@ function _doSubmitTransaction(payload, submitBtn, originalText) {
                             writeAudit('EDIT_ITEM', `แก้ไข [${payload.code}] ชื่อ: ${payload.name} | หมวด: ${payload.category} | Min: ${payload.min}`);
                             Swal.fire({icon: 'success', title: 'สำเร็จ!', text: 'อัปเดตข้อมูลสินค้าเสร็จสมบูรณ์!', timer: 2000, showConfirmButton: false});
                             let targetList = payload.type === 'tool' ? allData.tools : allData.items; let item = targetList.find(i => i.code === payload.code);
-                            if(item) { item.name = payload.name; item.category = payload.category; item.location = payload.location; item.unit = payload.unit; item.min = payload.min; item.price = payload.price; } onDataLoaded(allData);
+                            if(item) { item.name = payload.name; item.category = payload.category; item.location = payload.location; item.unit = payload.unit; item.min = payload.min; item.price = payload.price; if (payload.type === 'item') item.partNo = payload.partNo; } onDataLoaded(allData);
                         }
                     }).webEditItem(payload);
                 } else setTimeout(() => { document.getElementById('loading').style.display = 'none'; writeAudit('EDIT_ITEM', `แก้ไข [${payload.code}] (Demo)`); Swal.fire({icon: 'success', title: 'สำเร็จ!', text: 'จำลองอัปเดตข้อมูลสินค้าเสร็จสมบูรณ์!', timer: 2000, showConfirmButton: false}); }, 500);
