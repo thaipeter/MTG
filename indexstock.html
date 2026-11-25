@@ -10505,6 +10505,18 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             }
             return { chips: chips, text: txt.replace(/[\[\]]/g, ' ').replace(/\s+/g, ' ').trim() };
         }
+        // ปรับยอดแมนนวล: ทิศทางดูจากเครื่องหมายของจำนวน (+ = เพิ่ม, - = ลด) ไม่ใช่ชื่อ action
+        function _rhIsAdjust(log) { const a = String(log.action || '').trim().toLowerCase(); return a.includes('ปรับยอด') || a.includes('adjust'); }
+        function _rhIsIn(log) {
+            const a = String(log.action || '').trim().toLowerCase();
+            if (_rhIsAdjust(log)) return !String(log.amount == null ? '' : log.amount).trim().startsWith('-');
+            return ['รับเข้า', 'new item', 'ซ่อมแซมแล้ว', 'คืน'].some(x => a.includes(x.toLowerCase()));
+        }
+        function _rhIsOut(log) {
+            const a = String(log.action || '').trim().toLowerCase();
+            if (_rhIsAdjust(log)) return !_rhIsIn(log);
+            return ['เบิก', 'ยืม', 'แจ้งชำรุด'].some(x => a.includes(x.toLowerCase()));
+        }
         function renderItemHistory() {
             const modal = document.getElementById('receiveHistoryModal');
             const itemCode = modal._itemCode;
@@ -10521,7 +10533,7 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 sourceLogs.forEach(l => {
                     if (String(l.code || '').trim() !== itemCode) return;
                     const a = String(l.action || '').trim().toLowerCase();
-                    if (inActions.some(x => a.includes(x.toLowerCase()))) cIn++; else if (outActions.some(x => a.includes(x.toLowerCase()))) cOut++;
+                    if (_rhIsIn(l)) cIn++; else if (_rhIsOut(l)) cOut++;
                 });
                 const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
                 set('rhCntAll', cIn + cOut); set('rhCntIn', cIn); set('rhCntOut', cOut);
@@ -10530,8 +10542,8 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
                 const act  = String(log.action || '').trim().toLowerCase();
                 const code = String(log.code   || '').trim();
                 if (code !== itemCode) return false;
-                if (typeFilter === 'in')  return inActions.some(a  => act.includes(a.toLowerCase()));
-                if (typeFilter === 'out') return outActions.some(a => act.includes(a.toLowerCase()));
+                if (typeFilter === 'in')  return _rhIsIn(log);
+                if (typeFilter === 'out') return _rhIsOut(log);
                 return true;
             }).sort((a, b) => {
                 const da = parseThaiDate(a.time), db = parseThaiDate(b.time);
@@ -10567,11 +10579,11 @@ function compressImageFile(file, maxWidth = 1000, maxHeight = 1000, quality = 0.
             let lastMonthKey = null;
             visible.forEach((log, idx) => {
                 const act = String(log.action || '').trim().toLowerCase();
-                const isIn = inActions.some(a => act.includes(a.toLowerCase()));
+                const isIn = _rhIsIn(log);
                 const timeParts = (log.time || '').split(' ');
                 const displayUser = String(log.user || 'ไม่ระบุ').replace(/\[.*?\]/g, '').trim();
                 const amountNum = parseFloat(String(log.amount || '0').replace(/[^0-9.]/g, '')) || 0;
-                let actionLabel = isIn ? (act.includes('new item') ? 'รับเข้า (ใหม่)' : act.includes('คืน') ? 'คืน' : act.includes('ซ่อม') ? 'ซ่อมแล้ว' : 'รับเข้า') : (act.includes('ยืม') ? 'ยืม' : act.includes('ชำรุด') ? 'แจ้งชำรุด' : 'เบิก');
+                let actionLabel = _rhIsAdjust(log) ? 'ปรับยอด' : isIn ? (act.includes('new item') ? 'รับเข้า (ใหม่)' : act.includes('คืน') ? 'คืน' : act.includes('ซ่อม') ? 'ซ่อมแล้ว' : 'รับเข้า') : (act.includes('ยืม') ? 'ยืม' : act.includes('ชำรุด') ? 'แจ้งชำรุด' : 'เบิก');
                 const actionColor = isIn ? '#22c55e' : '#ef4444';
                 const amountStr  = isIn ? '+' + formatNumber(amountNum) : '-' + formatNumber(amountNum);
                 const rhPrice = modal._itemPrice || 0;
